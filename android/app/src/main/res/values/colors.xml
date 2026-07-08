@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand Sage (PRD §8.1) — the Android 12+ system splash background. -->
+    <color name="brand_splash">#FF2E705B</color>
+    <color name="icon_background">#FF2E705B</color>
+    <!-- App background (light). Matches the Flutter Home background so the
+         MainActivity warm-up window shows no color pop before the first frame. -->
+    <color name="app_background">#FFF7FAF8</color>
+</resources>

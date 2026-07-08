@@ -416,10 +416,11 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 
 | Module | Status | Last updated | Working? | Notes / known issues |
 |---|---|---|---|---|
-| Project scaffold & layering | ⬜ | | | |
-| Theming (light/dark, Plus Jakarta Sans) | ⬜ | | | |
-| Drift DB + schema + migrations | ⬜ | | | |
+| Project scaffold & layering | ✅ | 2026-07-08 | Yes | core/domain/data/presentation layering in place (Iteration 1). |
+| Theming (light/dark, Plus Jakarta Sans) | ✅ | 2026-07-08 | Yes | M3 light+dark from §8.1; PJS bundled. Dark Surface2 #243137 pending confirm. |
+| Drift DB + schema + migrations | ⬜ | | | Home currently reads a mock repository. |
 | Native-thin capture (Share Sheet) | ⬜ | | | Must not boot Flutter engine. |
+| Native animated splash (video) | ✅ | 2026-07-08 | Yes | Iteration 1: SplashActivity plays mp4 pre-engine; flash-free handoff. Not a PRD-mandated module — supports §5.2/§9.1. |
 | Native alarm scheduler | ⬜ | | | Exact alarms + Doze handling. |
 | Local notifications + escalation | ⬜ | | | |
 | Snooze limit logic | ⬜ | | | Enforce in domain layer. |
@@ -436,12 +437,20 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 
 ### 13.2 Current session log
 ```
-Session YYYY-MM-DD
-- Goal:
-- Done:
-- Working / verified:
-- Not working / deferred:
-- Next:
+Session 2026-07-08 — Iteration 1 (foundation: theme, font, native video splash → Home)
+- Goal: Ship the app foundation — design system + Plus Jakarta Sans, a fully-native Android
+  splash playing Cya_splash.mp4 before the Flutter engine boots, leading into the designed Home.
+- Done: core/theme (tokens, CyaColors extension, PJS type scale, M3 light+dark); Riverpod +
+  go_router shell (Home + placeholder tabs, notched nav, capture FAB stub); designed Home
+  (level badge, gradient Today card + CustomPainter ring, promise tiles, garden preview, week
+  stats + sparkline) reactive over a mock repo; native SplashActivity (TextureView+MediaPlayer,
+  center-crop, muted) + pre-warmed cached FlutterEngine + branded flash-free handoff.
+- Working / verified (emulator API 34): splash video → seamless Home handoff (no flash); Home in
+  light + dark; live toggle updates the Today ring; reduced-motion skips the video; analyze 0,
+  tests 2/2, debug APK builds on AGP 9.0.1 / Gradle 9.1 / Kotlin 2.3.20.
+- Not working / deferred: applicationId still com.example.cya (rename before release); dark
+  Surface2 #243137 to confirm; Home data is mock (Drift lands later).
+- Next: Phase 0 native-thin capture spike (Share Sheet → shared SQLite → AlarmManager) per §10.
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -459,6 +468,25 @@ Seed entries (already decided):
 - **[ADR-000c] Event-log-backed data model.** Section 7. Gamification + metrics derive from it.
 - **[ADR-000d] No backend in V1; E2EE dumb-blob store later.** Section 5.7.
 
+```
+[ADR-001] Native, pre-Flutter animated video splash
+Date: 2026-07-08
+Context: The brand intro (Cya_splash.mp4) should feel native and play immediately on cold start,
+  before the Flutter engine is ready, without a white/black flash on the native→Flutter handoff.
+Decision: A Kotlin SplashActivity is the LAUNCHER and plays the mp4 (res/raw) on a TextureView via
+  the framework MediaPlayer (center-cropped, muted) — chosen over Media3/ExoPlayer to avoid adding
+  an AndroidX dependency graph on the bleeding-edge AGP 9 toolchain. A custom Application pre-warms
+  a cached FlutterEngine during playback; MainActivity.provideFlutterEngine attaches it. Flash-free
+  chain: values-v31 branded system splash → SplashActivity window = still first frame → TextureView
+  alpha-revealed on first rendered frame → MainActivity warm-up window == Flutter Home background.
+  One idempotent proceed() handles completion / error / 6 s timeout / tap-to-skip / reduced-motion.
+Consequences: Splash is Android-only (iOS needs its own approach in fast-follow); the video lives
+  only in res/raw (not double-bundled in pubspec). This is UI-layer native code for the splash and
+  does NOT touch or regress the native-thin capture path (ADR-000b). One persistent pre-warmed
+  engine (no auto-teardown; cached engines don't receive initial-route/intents — revisit for
+  deep-links/capture).
+```
+
 ### 13.4 Mistakes & lessons learned
 ```
 [L-001]
@@ -471,7 +499,13 @@ Lesson / rule to remember going forward:
 ### 13.5 Test & verification log
 | Date | What was tested | Result | Notes |
 |---|---|---|---|
-| | | | |
+| 2026-07-08 | `flutter analyze` | ✅ 0 issues | Iteration 1. |
+| 2026-07-08 | `flutter test` (Home smoke + reactive toggle) | ✅ 2/2 | |
+| 2026-07-08 | `flutter build apk --debug` | ✅ built | AGP 9.0.1 / Gradle 9.1 / Kotlin 2.3.20. |
+| 2026-07-08 | Native splash → Home handoff (emulator API 34) | ✅ | Video plays pre-engine; no flash into Home. |
+| 2026-07-08 | Reactive toggle updates Today ring | ✅ | 1/4 → 2/4 on tap. |
+| 2026-07-08 | Dark mode render | ✅ | M3 dark + values-night warm-up. |
+| 2026-07-08 | Reduced-motion (animator scale 0) skips video | ✅ | Fast handoff, no video. |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?

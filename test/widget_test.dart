@@ -1,30 +1,54 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Smoke tests for the Cya! app shell and reactive Home.
 
+import 'package:cya/presentation/app/cya_app.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:cya/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Home renders greeting, Today card and a promise', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ProviderScope(child: CyaApp()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.textContaining('Arif'), findsOneWidget); // greeting
+    expect(find.text('4 promises'), findsOneWidget); // Today hero card
+    expect(find.text('Reply to Sarah'), findsOneWidget); // mock promise
+    expect(find.text('Garden'), findsWidgets); // bottom nav
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+  testWidgets('Toggling a promise updates the Today completion ring', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const ProviderScope(child: CyaApp()));
+    await tester.pumpAndSettle();
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Mock data starts with 1 of 4 completed.
+    expect(find.text('1/4'), findsOneWidget);
+
+    await tester.tap(find.byIcon(Icons.check_rounded).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('0/4'), findsOneWidget);
+  });
+
+  testWidgets('Profile dark mode switch updates the app theme', (tester) async {
+    await tester.pumpWidget(const ProviderScope(child: CyaApp()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+
+    final switchFinder = find.byKey(
+      const ValueKey<String>('profile-dark-mode-switch'),
+    );
+    expect(switchFinder, findsOneWidget);
+    expect(Theme.of(tester.element(switchFinder)).brightness, Brightness.light);
+
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    expect(Theme.of(tester.element(switchFinder)).brightness, Brightness.dark);
   });
 }
