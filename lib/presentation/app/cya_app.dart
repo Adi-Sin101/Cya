@@ -44,14 +44,20 @@ class _CyaAppState extends ConsumerState<CyaApp> with WidgetsBindingObserver {
     ref.invalidate(reminderHealthProvider);
   }
 
-  /// `cya://promise/<id>` → the promise detail screen.
+  /// `cya://promise/<id>` → promise detail; `cya://digest` → the weekly review.
   void _handleDeepLink(String? link) {
     if (link == null || !mounted) return;
     final uri = Uri.tryParse(link);
-    if (uri == null || uri.host != 'promise') return;
-    final id = int.tryParse(uri.pathSegments.firstOrNull ?? '');
-    if (id == null) return;
-    ref.read(goRouterProvider).push(RoutePaths.promiseDetail(id));
+    if (uri == null) return;
+    switch (uri.host) {
+      case 'promise':
+        final id = int.tryParse(uri.pathSegments.firstOrNull ?? '');
+        if (id != null) {
+          ref.read(goRouterProvider).push(RoutePaths.promiseDetail(id));
+        }
+      case 'digest':
+        ref.read(goRouterProvider).push(RoutePaths.digest);
+    }
   }
 
   @override

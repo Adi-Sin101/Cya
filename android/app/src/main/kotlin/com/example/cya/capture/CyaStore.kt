@@ -180,6 +180,31 @@ internal class CyaStore(private val context: Context) {
         }
     }
 
+    /** How many promises were kept since Monday — what the weekly digest leads with. */
+    fun resolvedSinceStartOfWeek(nowMillis: Long = System.currentTimeMillis()): Int {
+        val weekStart = java.util.Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+            // Calendar weeks start on Sunday; the app's week starts on Monday, matching
+            // WeekProjection.startOfWeek.
+            val daysSinceMonday = (get(java.util.Calendar.DAY_OF_WEEK) +
+                5) % 7
+            add(java.util.Calendar.DAY_OF_YEAR, -daysSinceMonday)
+        }.timeInMillis / 1000
+
+        return open().use { db ->
+            db.rawQuery(
+                "SELECT COUNT(*) FROM ${CyaDatabaseContract.TABLE_EVENTS} " +
+                    "WHERE ${CyaDatabaseContract.COL_EVENT_TYPE} = ? " +
+                    "AND ${CyaDatabaseContract.COL_EVENT_OCCURRED_AT} >= ?",
+                arrayOf(CyaDatabaseContract.EVENT_RESOLVED, weekStart.toString()),
+            ).use { cursor -> if (cursor.moveToFirst()) cursor.getInt(0) else 0 }
+        }
+    }
+
     /**
      * Opens the shared database, creating the schema when this is the first ever write — a share can
      * arrive before the app has been launched once. Whoever creates it stamps `user_version`, so the

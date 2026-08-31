@@ -89,6 +89,9 @@
             android:name=".reminders.NotificationActionReceiver"
             android:exported="false"/>
         <receiver
+            android:name=".reminders.DigestReceiver"
+            android:exported="false"/>
+        <receiver
             android:name=".reminders.BootReceiver"
             android:exported="false">
             <intent-filter>

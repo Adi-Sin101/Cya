@@ -69,6 +69,8 @@ internal object ReminderScheduler {
             val at = promise.reminderAtMillis ?: continue
             schedule(context, promise.id, if (at < now) now + CATCH_UP_DELAY_MILLIS else at)
         }
+        // The weekly review rides along: one place that guarantees both kinds of alarm exist.
+        DigestScheduler.scheduleNext(context, now)
         Log.i(TAG, "rescheduled count=${pending.size}")
         return pending.size
     }

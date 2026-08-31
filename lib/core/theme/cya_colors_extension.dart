@@ -72,6 +72,16 @@ class CyaColors extends ThemeExtension<CyaColors> {
 }
 
 /// Convenience access to the [CyaColors] extension for the current theme.
+///
+/// Falls back to the palette matching the theme's brightness when the extension
+/// is missing — a widget rendered outside the app's theme (a test harness, a
+/// preview) should look plain, not crash.
 extension CyaColorsX on BuildContext {
-  CyaColors get cyaColors => Theme.of(this).extension<CyaColors>()!;
+  CyaColors get cyaColors {
+    final theme = Theme.of(this);
+    return theme.extension<CyaColors>() ??
+        (theme.brightness == Brightness.dark
+            ? CyaColors.dark
+            : CyaColors.light);
+  }
 }

@@ -431,7 +431,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Categories + FTS search | 🟨 | 2026-08-31 | Partly | FTS5 search live and verified against natively written rows (Dart-owned index, ADR-005). Manual categories stored but no category UI yet. |
 | Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the full Memory Garden (weekly beds, plant species, streak) are pure projections. Rive reward moments still deferred — see 13.6. |
 | Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
-| Weekly digest | ⬜ | | | Escalation's third rung already routes here — the digest itself is iteration 5. |
+| Weekly digest | ✅ | 2026-08-31 | Yes | Sunday 18:00 native alarm (self-rescheduling), low-importance notification leading with what was kept, `cya://digest` into a review screen with one-tap resolution. |
 | Enrichment (date extraction) | ⬜ | | | Fast-follow. |
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
 
@@ -534,6 +534,21 @@ Session 2026-08-31 - Iteration 5 (the reward half: Memory Garden + achievements)
   with Flutter instead, and reward moments are not built); the weekly digest.
 - Next: the weekly digest (escalation's third rung), then enrichment (on-device date extraction and
   auto-categorization).
+
+Session 2026-08-31 - Iteration 5 (part 2): the weekly digest
+- Goal: Give escalation's third rung somewhere to point (5.6). A promise past the snooze limit stops
+  interrupting - it has to end up somewhere, or "stops interrupting" just means "is forgotten".
+- Done: native DigestScheduler (next Sunday 18:00, inexact, self-rescheduling so it survives reboots
+  and time changes without drifting) armed from the same rescheduleAll() that arms reminders;
+  DigestReceiver posting a low-importance notification that leads with what was KEPT and stays quiet
+  on an empty week; a `cya://digest` deep link into a review screen with "Time to decide" (promises
+  past the snooze limit), "Still waiting" and "Kept", each row resolvable in one tap.
+- Working / verified on emulator: broadcasting the digest logged `digest_shown kept=1 open=2` and
+  armed the next one for the following Sunday 18:00; the deep link opened the review from a cold
+  start with the right sections. 97 tests green (4 new for the digest screen).
+- Not working / deferred: Rive reward moments still need assets; enrichment is next.
+- Next: enrichment - on-device date extraction (ML Kit) and rule-based auto-categorization, both off
+  the capture path (3.2).
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -729,6 +744,9 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 | 2026-08-31 | Garden + achievement projections | ✅ | 16 unit tests: weekly beds, stable species per promise, growth over a week, streak rules (same-day, missed day, grace for today), badge predicates and progress. |
 | 2026-08-31 | Garden and Achievements on device | ✅ | 4 kept promises across 3 weeks rendered as beds with a 3-day streak; 1 of 6 badges unlocked with correct progress. |
 | 2026-08-31 | `flutter test` (93 tests) | ✅ 93/93 | +16 projections, +3 widget tests (garden populated, garden empty, achievements). |
+| 2026-08-31 | Weekly digest fires and re-arms | ✅ | `digest_shown kept=1 open=2`, next scheduled for the following Sunday 18:00. |
+| 2026-08-31 | `cya://digest` deep link | ✅ | Cold start into the review screen with Kept / Still waiting sections. |
+| 2026-08-31 | `flutter test` (97 tests) | ✅ 97/97 | +4 digest screen (leads with kept, stalled section, resolve from the review, empty week). |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?

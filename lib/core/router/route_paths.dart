@@ -16,4 +16,7 @@ abstract final class RoutePaths {
 
   /// Full achievements grid, opened from Profile (PRD §8.2).
   static const String achievements = '/achievements';
+
+  /// The weekly review, opened from the digest notification (PRD §5.6).
+  static const String digest = '/digest';
 }

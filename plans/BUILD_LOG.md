@@ -461,3 +461,30 @@ Format for each entry:
   Screenshot the result before believing it: the projections were right on the first try and the
   drawing was wrong, and only one of those is visible in a test.
 - Next: the weekly digest, then enrichment (on-device date extraction, auto-categorization).
+
+## 2026-08-31 — Iteration 5 (part 2): the weekly digest
+- Plan: plans/iteration-5-garden-achievements-digest.md
+- Goal: Give escalation's third rung somewhere to point (PRD §5.6). A promise past the snooze limit
+  stops interrupting — it has to end up *somewhere*, or "stops interrupting" just means "forgotten".
+- Done:
+  - **`DigestScheduler`** — next Sunday 18:00, inexact (a weekly review does not need to interrupt
+    to the minute, and inexact is far kinder to the battery), and scheduled one week at a time: the
+    receiver arms the next when it fires, so the schedule survives reboots and clock changes without
+    drifting. Armed from the same `rescheduleAll()` that arms reminders — one place guarantees both.
+  - **`DigestReceiver`** — leads with what was *kept*, then what is waiting; says nothing at all on a
+    week with no activity. Deliberately a low-importance channel.
+  - **Digest screen** (`cya://digest`) — "Time to decide" for promises past the snooze limit, "Still
+    waiting", and "Kept", with one-tap resolution on every row: the review is a place to close the
+    loop, not just to read about it.
+- Verified / working: broadcasting the digest logged `digest_shown kept=1 open=2` and armed the next
+  for the following Sunday 18:00; the deep link opened the review from a cold start with the right
+  sections (screenshot in `build/verification/digest.png`). `flutter analyze` 0 · `flutter test`
+  97/97.
+- Broke / deferred: the first digest test crashed on `context.cyaColors`, which force-unwrapped the
+  theme extension — a widget rendered outside the app's theme should look plain, not explode. It now
+  falls back to the palette matching the theme brightness.
+- Lesson / rule: an accessor that force-unwraps ambient state makes every widget untestable in
+  isolation. Give it a sane fallback and the same widget works in the app, in a test, and in a
+  preview.
+- Next: enrichment — on-device date extraction and rule-based auto-categorization, both strictly off
+  the capture path (PRD §3.2).
