@@ -427,7 +427,7 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. |
 | Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / Open-in-app (stub until deep links) / Snooze + "Why this matters". Deep-linkable route. |
 | Quick Settings Tile | ✅ | 2026-08-31 | Yes | TileService opens a native dialog capture (clipboard pre-filled), engine-free. Tile capture measured at 35 ms. |
-| Home-screen widget | ⬜ | | | |
+| Home-screen widget | ⚠️ | 2026-08-31 | Untested on a home screen | RemoteViews widget reading the store directly (no engine); provider registered and its update path runs clean. Placing it on the launcher was not automated — needs a manual look. |
 | Categories + FTS search | ✅ | 2026-08-31 | Yes | FTS5 search verified against natively written rows (ADR-005); seven manual categories with a picker on Promise Detail, filter chips on Promises, and an icon on every tile. |
 | Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the full Memory Garden (weekly beds, plant species, streak) are pure projections. Rive reward moments still deferred — see 13.6. |
 | Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
@@ -565,6 +565,20 @@ Session 2026-08-31 - Iteration 6 (Quick Settings Tile + manual categories)
 - Not working / deferred: the home-screen widget is the last Phase 1 item; Rive reward moments still
   need assets.
 - Next: the home-screen widget, then enrichment.
+
+Session 2026-08-31 - Iteration 7 (home-screen widget: the last Phase 1 surface)
+- Goal: The remaining capture surface from 6.1 - two tap targets, capture and view today.
+- Done: CyaWidgetProvider renders a RemoteViews card on the brand gradient showing today's remaining
+  promises and how many are kept; the body opens the app, the + opens the same native quick capture
+  the tile uses. CyaStore.todayCounts() answers it with one aggregate, and every native write path
+  (share capture, tile capture, notification Done/Snooze) calls CyaWidgetProvider.refresh(), so the
+  widget is never staler than the write that changed it. No Flutter engine renders the count.
+- Working / verified: the provider is registered (`dumpsys appwidget` lists it), an update broadcast
+  runs with no exception, and the counts query matches a hand-written SQL cross-check.
+- NOT verified: the widget has not been placed on a launcher home screen - that step could not be
+  automated over adb. It needs one manual look before Phase 1 can be called complete.
+- Next: enrichment (5.5) - on-device date extraction and rule-based auto-categorization, both off
+  the capture path.
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -765,6 +779,9 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 | 2026-08-31 | `flutter test` (97 tests) | ✅ 97/97 | +4 digest screen (leads with kept, stalled section, resolve from the review, empty week). |
 | 2026-08-31 | Quick Settings Tile capture | ✅ 35 ms | Native dialog → row stored with source "Quick Tile" + exact alarm scheduled; no Flutter engine. |
 | 2026-08-31 | `flutter test` (101 tests) | ✅ 101/101 | +4 category round-trip, storage and clearing. |
+| 2026-08-31 | Widget provider registered + update path | ✅ | `dumpsys appwidget` lists the provider; update broadcast runs clean; counts match a SQL cross-check. |
+| 2026-08-31 | Widget rendered on a launcher home screen | ⬜ not tested | Could not be automated over adb — needs a manual look. |
+| 2026-08-31 | Home reads 7 promises, 4/7 done, 170 XP | ✅ | XP = 7 captures x 10 + 4 resolutions x 25, exactly as projected. |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?

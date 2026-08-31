@@ -7,6 +7,7 @@ import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
 import com.example.cya.reminders.ReminderScheduler
+import com.example.cya.widget.CyaWidgetProvider
 
 /**
  * The Share Sheet capture surface (PRD §6.1) and the strictest expression of the native-thin
@@ -64,6 +65,7 @@ class CaptureActivity : Activity() {
             )
             // The second and last thing the capture path does (PRD §5.4): one insert, one alarm.
             ReminderScheduler.schedule(this, result.intentionId, reminderAt)
+            CyaWidgetProvider.refresh(this)
             // Single tagged line so an adb run can assert the §9.2 budget.
             Log.i(TAG, "capture_ok id=${result.intentionId} capture_ms=${result.elapsedMillis}")
             toast("Saved. I'll remember for you.")

@@ -21,6 +21,7 @@ import android.widget.Toast
 import com.example.cya.capture.CyaStore
 import com.example.cya.capture.ReminderDefaults
 import com.example.cya.reminders.ReminderScheduler
+import com.example.cya.widget.CyaWidgetProvider
 
 /**
  * The Quick Settings Tile's capture screen (PRD §6.1).
@@ -129,6 +130,7 @@ class QuickCaptureActivity : Activity() {
                 startedAtElapsedMillis = startedAt,
             )
             ReminderScheduler.schedule(this, result.intentionId, reminderAt)
+            CyaWidgetProvider.refresh(this)
             Log.i(TAG, "tile_capture_ok id=${result.intentionId} capture_ms=${result.elapsedMillis}")
             Toast.makeText(this, "Saved. I'll remember for you.", Toast.LENGTH_SHORT).show()
         } catch (error: RuntimeException) {

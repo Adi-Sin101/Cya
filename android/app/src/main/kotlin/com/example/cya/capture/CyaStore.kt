@@ -29,6 +29,11 @@ internal class CyaStore(private val context: Context) {
 
     data class CaptureResult(val intentionId: Long, val elapsedMillis: Long)
 
+    /** What the home-screen widget shows. */
+    data class TodayCounts(val total: Int, val completed: Int) {
+        val remaining: Int get() = (total - completed).coerceAtLeast(0)
+    }
+
     /** The fields a notification needs — deliberately not the whole row. */
     data class Promise(
         val id: Long,
@@ -176,6 +181,49 @@ internal class CyaStore(private val context: Context) {
         ).use { cursor ->
             buildList {
                 while (cursor.moveToNext()) add(cursor.toPromise())
+            }
+        }
+    }
+
+    /**
+     * Today's promises and how many are already kept — the same window the app's Today card uses
+     * (due by end of day, including overdue, plus anything resolved today).
+     */
+    fun todayCounts(nowMillis: Long = System.currentTimeMillis()): TodayCounts {
+        val startOfDay = java.util.Calendar.getInstance().apply {
+            timeInMillis = nowMillis
+            set(java.util.Calendar.HOUR_OF_DAY, 0)
+            set(java.util.Calendar.MINUTE, 0)
+            set(java.util.Calendar.SECOND, 0)
+            set(java.util.Calendar.MILLISECOND, 0)
+        }
+        val dayStart = startOfDay.timeInMillis / 1000
+        val dayEnd = dayStart + 24 * 60 * 60 - 1
+
+        return open().use { db ->
+            db.rawQuery(
+                "SELECT " +
+                    "COUNT(*) AS total, " +
+                    "SUM(CASE WHEN ${CyaDatabaseContract.COL_STATUS} = ? THEN 1 ELSE 0 END) " +
+                    "AS done " +
+                    "FROM ${CyaDatabaseContract.TABLE_INTENTIONS} " +
+                    "WHERE ${CyaDatabaseContract.COL_STATUS} != 'archived' " +
+                    "AND ${CyaDatabaseContract.COL_REMINDER_AT} IS NOT NULL " +
+                    "AND ${CyaDatabaseContract.COL_REMINDER_AT} <= ? " +
+                    "AND (${CyaDatabaseContract.COL_STATUS} != ? " +
+                    "OR ${CyaDatabaseContract.COL_UPDATED_AT} >= ?)",
+                arrayOf(
+                    CyaDatabaseContract.STATUS_RESOLVED,
+                    dayEnd.toString(),
+                    CyaDatabaseContract.STATUS_RESOLVED,
+                    dayStart.toString(),
+                ),
+            ).use { cursor ->
+                if (cursor.moveToFirst()) {
+                    TodayCounts(total = cursor.getInt(0), completed = cursor.getInt(1))
+                } else {
+                    TodayCounts(0, 0)
+                }
             }
         }
     }

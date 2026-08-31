@@ -515,3 +515,28 @@ Format for each entry:
 - Lesson / rule: build native UI at the size it will actually appear. A dialog theme's default width
   is not the width of a phone, and the difference is only visible in a screenshot.
 - Next: the home-screen widget (PRD §6.1), then enrichment (§5.5).
+
+## 2026-08-31 — Iteration 7: the home-screen widget
+- Plan: plans/iteration-5-garden-achievements-digest.md (follow-on; last Phase 1 surface)
+- Goal: The remaining capture surface from PRD §6.1 — two tap targets: capture, and view today.
+- Done:
+  - **`CyaWidgetProvider`** — a RemoteViews card on the brand gradient: today's remaining promises,
+    how many are kept, the body opening the app and the `+` opening the same native quick capture
+    the tile uses. It reads the shared store directly; **no Flutter engine renders a count**, which
+    would be a battery cost the user never asked for.
+  - **`CyaStore.todayCounts()`** — one aggregate over the same window as the app's Today card (due
+    by end of day, including overdue, plus what was resolved today).
+  - Every native write path — share capture, tile capture, notification Done/Snooze — calls
+    `CyaWidgetProvider.refresh()`, so the widget is never staler than the write that changed it.
+- Verified / working: the provider is registered (`dumpsys appwidget` lists it), an update broadcast
+  runs with no exception in logcat, and `todayCounts()`'s query matches a hand-written SQL
+  cross-check (7 due today, 4 kept). Home itself shows 7 promises, 4/7 done and 170 XP — exactly
+  7 captures × 10 + 4 resolutions × 25, so the projection is right end to end.
+  `flutter analyze` 0 · `flutter test` 101/101.
+- Broke / deferred: **the widget has not been seen on an actual home screen.** Placing a widget
+  needs the launcher's picker, which could not be driven over adb. Recorded as ⚠️ in PRD §13.1
+  rather than ticked — it needs one manual look before Phase 1 is complete.
+- Lesson / rule: report what was actually observed. "Provider registered and update path runs" is
+  not "the widget works", and writing it down as the former keeps the next session honest.
+- Next: enrichment (PRD §5.5) — on-device date extraction (ML Kit) and rule-based
+  auto-categorization, both strictly off the capture path.

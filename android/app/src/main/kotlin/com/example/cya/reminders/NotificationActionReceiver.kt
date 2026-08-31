@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.util.Log
 import com.example.cya.capture.CyaStore
+import com.example.cya.widget.CyaWidgetProvider
 
 /**
  * One-tap resolution and snooze straight from the notification (PRD §3.4, §8.4).
@@ -26,6 +27,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 val resolved = store.resolve(id, now)
                 ReminderNotifications.dismiss(context, id)
                 ReminderScheduler.cancel(context, id)
+                CyaWidgetProvider.refresh(context)
                 Log.i(TAG, "notification_done id=$id resolved=$resolved")
             }
 
@@ -49,6 +51,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
                         )
                     }
                 }
+                CyaWidgetProvider.refresh(context)
                 Log.i(TAG, "notification_snooze id=$id granted=$snoozed")
             }
         }

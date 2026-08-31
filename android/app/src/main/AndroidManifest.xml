@@ -107,6 +107,18 @@
         <receiver
             android:name=".reminders.NotificationActionReceiver"
             android:exported="false"/>
+        <!-- Home-screen widget (PRD 6.1). It reads the shared store directly;
+             no Flutter engine renders a count. -->
+        <receiver
+            android:name=".widget.CyaWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/cya_widget_info"/>
+        </receiver>
         <receiver
             android:name=".reminders.DigestReceiver"
             android:exported="false"/>
