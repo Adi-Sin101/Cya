@@ -13,10 +13,20 @@ is [docs/Cya_Master_PRD_and_Development_Bible.md](docs/Cya_Master_PRD_and_Develo
 It is the **bible**. Read it before non-trivial work. If a requirement here conflicts with what
 you're about to do, **stop and flag it** rather than silently diverging.
 
-> Current state: the repo is a **fresh Flutter scaffold** (default counter app in
-> [lib/main.dart](lib/main.dart)). The stack below (Drift, Riverpod, freezed, etc.) is the
-> *target* from the PRD and is **not yet in `pubspec.yaml`** — add dependencies as each phase
-> requires them, don't assume they exist.
+> Current state (2026-08-31): **Phase 0 is complete.** Riverpod + go_router + the designed Home,
+> Promises, Promise Detail and Profile screens are reactive over a **Drift** store
+> (`intentions` + append-only `intention_events` + `preferences` + an FTS5 search index), and the
+> **native-thin Share Sheet capture path** writes to that same SQLite file from Kotlin with no
+> Flutter engine (762 ms cold, 117 ms warm on an API 34 emulator). Reminder scheduling
+> (`AlarmManager`), notifications with one-tap Done/Snooze, escalation tiers and boot rescheduling
+> are in — see `plans/BUILD_LOG.md` for what is verified and what is not.
+>
+> Not yet built: Memory Garden and Achievements screens (placeholders), Rive reward animations,
+> the weekly digest, enrichment (on-device date extraction, auto-categorization), Quick Settings
+> Tile, home-screen widget, and iOS. `freezed` is deliberately **not** used — see ADR-003.
+> Two contracts to respect before touching data or native code:
+> [docs/native_db_contract.md](docs/native_db_contract.md) (the schema both runtimes write) and the
+> ADR log in PRD §13.3.
 
 ## Development workflow (non-negotiable process)
 
@@ -78,9 +88,12 @@ native/        Platform channels + native modules (capture, tile, widget, alarms
 core/          DI, Result/error types, constants, extensions
 ```
 
-Target stack: Riverpod (state/DI), Drift/SQLite (reactive source of truth), freezed +
-json_serializable (immutable models), go_router (nav), flutter_local_notifications, Rive
-(reward animations), google_fonts (Plus Jakarta Sans).
+Stack in place: Riverpod (state/DI), Drift/SQLite (reactive source of truth), go_router (nav,
+including the deep-linkable `cya://promise/<id>` route), bundled Plus Jakarta Sans. Notifications
+and exact alarms are **native Kotlin**, not `flutter_local_notifications` — the same scheduler has
+to work when the engine has never started (ADR in PRD §13.3). Still to come: Rive (reward
+animations) and on-device ML Kit enrichment. Immutable models are hand-written, not freezed
+(ADR-003).
 
 ## Invariants that must never regress
 
@@ -96,8 +109,12 @@ a product-level bug, not a style nit:
    in V1).
 3. **Event-log-backed data model.** `Intention` is the current-state row; `IntentionEvent` is an
    append-only log. **All gamification and metrics are projections over the event log** —
-   recomputable, tamper-resistant. Native capture writes must match the Drift schema (§7); keep a
-   shared migration/version contract between Drift and the native writer.
+   recomputable, tamper-resistant. No mutation may happen without its event, in the same
+   transaction — that rule holds in `IntentionDao` *and* in the Kotlin `CyaStore`. Native capture
+   writes must match the Drift schema; the contract is written down in
+   [docs/native_db_contract.md](docs/native_db_contract.md) and a test asserts it.
+   **A shared database may only use SQL features both SQLite builds have** — Android's system
+   SQLite has no FTS5, so the search index is Dart-owned (ADR-005, lesson L-001).
 4. **Close the loop.** Resurfacing, escalation (quiet → banner → digest), snooze limit, and
    one-tap resolution (reachable from the notification) are **V1**, not later.
 5. **Performance AND beauty are co-equal, zero tradeoff** (§9.1): native capture path, Rive for

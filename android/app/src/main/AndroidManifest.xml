@@ -1,4 +1,12 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Reminders are this app's core function (PRD 3.4/5.6), which is what
+         qualifies it for exact alarms. The scheduler still degrades to an
+         inexact alarm rather than failing if permission is absent. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Alarms do not survive a reboot; they are re-armed from the store. -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <application
         android:label="Cya!"
         android:icon="@mipmap/ic_launcher"
@@ -51,11 +59,44 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Cya! routes its own deep links: MainActivity hands `cya://promise/<id>`
+                 to Dart over the reminder channel, which pushes the promise detail
+                 route. Flutter's automatic handling would instead feed the raw URI to
+                 go_router as a location, which has no such route. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- cya://promise/<id> — a reminder opens the promise it is about
+                 (PRD 3.4: one-tap resolution reachable from the notification). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="cya"/>
+            </intent-filter>
         </activity>
+        <!-- The resurfacing engine (PRD 5.6). All three are engine-free: a
+             reminder can fire, and be resolved, without Flutter ever starting. -->
+        <receiver
+            android:name=".reminders.ReminderReceiver"
+            android:exported="false"/>
+        <receiver
+            android:name=".reminders.NotificationActionReceiver"
+            android:exported="false"/>
+        <receiver
+            android:name=".reminders.BootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

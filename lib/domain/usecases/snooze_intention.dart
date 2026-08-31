@@ -2,6 +2,7 @@ import '../../core/result.dart';
 import '../../core/utils/clock.dart';
 import '../policies/snooze_policy.dart';
 import '../repositories/intention_repository.dart';
+import '../services/reminder_scheduler.dart';
 
 /// Push a promise back — but only as often as the product allows.
 ///
@@ -9,10 +10,11 @@ import '../repositories/intention_repository.dart';
 /// surface that can snooze (list, detail, notification action) gets the same
 /// answer. Refusing a fourth snooze is a feature, not an error.
 class SnoozeIntention {
-  const SnoozeIntention(this._repository, this._clock);
+  const SnoozeIntention(this._repository, this._clock, this._scheduler);
 
   final IntentionRepository _repository;
   final Clock _clock;
+  final ReminderScheduler _scheduler;
 
   Future<Result<DateTime>> call(int id, {Duration? by, DateTime? until}) async {
     try {
@@ -28,6 +30,7 @@ class SnoozeIntention {
       final now = _clock();
       final target = until ?? now.add(by ?? SnoozePolicy.defaultSnooze);
       await _repository.snooze(id, until: target, at: now);
+      await _scheduler.schedule(id, target);
       return Result.success(target);
     } on Object catch (error, stackTrace) {
       return Result.failure(StorageError(error, stackTrace));

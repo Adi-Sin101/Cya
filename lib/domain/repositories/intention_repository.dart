@@ -36,6 +36,10 @@ abstract interface class IntentionRepository {
   /// The next promise needing an alarm after [after].
   Future<Intention?> nextScheduled(DateTime after);
 
+  /// Promises whose reminder came and went without ever being shown —
+  /// evidence that alarms are being dropped (PRD §12).
+  Future<List<Intention>> missedReminders(DateTime now, {Duration grace});
+
   Future<int> count();
 
   Future<int> capture(NewIntention intention);

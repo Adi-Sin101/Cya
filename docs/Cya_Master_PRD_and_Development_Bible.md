@@ -421,8 +421,8 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Drift DB + schema + migrations | ✅ | 2026-08-31 | Yes | v1: intentions + intention_events + preferences + FTS5 (trigger-maintained) + hot-path indices. Contract in docs/native_db_contract.md. |
 | Native-thin capture (Share Sheet) | ✅ | 2026-08-31 | Yes | Kotlin CaptureActivity → direct SQLite write, no Flutter engine. Cold fresh-install 762 ms total / 172 ms write; warm 117 ms median. |
 | Native animated splash (video) | ✅ | 2026-07-08 | Yes | Iteration 1: SplashActivity plays mp4 pre-engine; flash-free handoff. Not a PRD-mandated module — supports §5.2/§9.1. |
-| Native alarm scheduler | ⬜ | | | Exact alarms + Doze handling. dueAt/nextScheduled queries ready. |
-| Local notifications + escalation | 🟨 | 2026-08-31 | Partly | Escalation tiers + snooze limit exist as domain policy; no notification layer yet. |
+| Native alarm scheduler | ✅ | 2026-08-31 | Yes | `setExactAndAllowWhileIdle`, degrades to inexact when the permission is absent; re-armed on boot and on every app resume. |
+| Local notifications + escalation | ✅ | 2026-08-31 | Yes | Native channels quiet/banner; Done + Snooze actions write to the store with no Flutter engine; past the snooze limit Cya! stops interrupting (digest tier). |
 | Snooze limit logic | ✅ | 2026-08-31 | Yes | SnoozePolicy (max 3) enforced in SnoozeIntention; detail screen prompts to resolve/archive. |
 | Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. |
 | Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / Open-in-app (stub until deep links) / Snooze + "Why this matters". Deep-linkable route. |
@@ -431,9 +431,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Categories + FTS search | 🟨 | 2026-08-31 | Partly | FTS5 search live and verified against natively written rows (Dart-owned index, ADR-005). Manual categories stored but no category UI yet. |
 | Gamification (XP/levels/garden) | 🟨 | 2026-08-31 | Partly | XP/level/week/garden are pure projections over the log (ADR-002). Rive reward animations still to come. |
 | Achievements | ⬜ | | | |
-| Weekly digest | ⬜ | | | |
+| Weekly digest | ⬜ | | | Escalation's third rung already routes here — the digest itself is iteration 5. |
 | Enrichment (date extraction) | ⬜ | | | Fast-follow. |
-| Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` now recorded in every `captured` event + Logcat. Remaining §11 metrics derive from the log; no in-app reporting surface yet. |
+| Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
 
 ### 13.2 Current session log
 ```
@@ -490,6 +490,32 @@ Session 2026-08-31 - Iteration 3 (native-thin capture: Phase 0's two-second spik
   iteration 4; source_app shows the caller's label ("Shell" over adb).
 - Next: iteration 4 - AlarmManager, notification channels by escalation tier, one-tap resolution
   from the notification, boot rescheduling, deep link into promise detail.
+
+Session 2026-08-31 - Iteration 4 (closing the loop: alarms, notifications, escalation)
+- Goal: Make a captured promise actually come back, and let the user close it from the notification
+  without opening the app (3.4, 5.6, 8.4).
+- Done: native ReminderScheduler (exact alarms, inexact fallback, boot + resume rescheduling),
+  ReminderReceiver (reads current state, picks the tier, logs `resurfaced`), notification channels
+  quiet/banner with Done + Snooze actions, NotificationActionReceiver writing straight to SQLite,
+  BootReceiver, `cya://promise/<id>` deep link, a Dart ReminderPort so in-app capture/snooze/
+  reschedule use the SAME native scheduler, missed-reminder detection + the Home banner that offers
+  the fix, and notification permission requested at the moment its reason is on screen.
+- Working / verified on emulator (API 34): capture schedules an exact RTC_WAKEUP alarm (confirmed in
+  `dumpsys alarm`, exactAllowReason=policy_permission); a REAL alarm fired at 20:00:00 after
+  advancing the device clock, posting the quiet-channel notification; Done from the notification
+  resolved the row, logged `resolved{"surface":"notification"}`, dismissed the notification and
+  cancelled the alarm - with no Flutter engine; snooze re-armed the alarm and the next fire escalated
+  to the banner channel; the fourth snooze was refused and the digest tier posted no interruption;
+  BootReceiver re-armed pending alarms; the deep link opened Promise Detail from a cold start.
+  74 Dart tests green (7 new for missed reminders, 7 for scheduling side effects).
+- Broke / deferred: [L-002] a Kotlin `return` inside the inline `transaction { }` helper silently
+  rolled back every native capture while logging success - caught only on device. Flutter's automatic
+  deep linking fed the raw `cya://` URI to go_router as a location ("no routes for location"); the
+  app now routes its own links (`flutter_deeplinking_enabled=false`). The first notification used the
+  launcher icon and rendered as a hollow blob - status-bar icons are alpha masks, so a white
+  silhouette (`ic_stat_cya`) was generated. The weekly digest itself is iteration 5.
+- Next: iteration 5 - Memory Garden, achievements, reward animations, and the weekly digest that
+  escalation's third rung already points at.
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -599,6 +625,28 @@ Consequences: The capture path stays dependency-free and as thin as it can be, w
   table, so the counts always agree even when nothing is indexed.
 ```
 
+
+```
+[ADR-006] Reminders are scheduled and shown by native code, not flutter_local_notifications
+Date: 2026-08-31
+Context: 4.2 lists flutter_local_notifications for notifications. But 5.4 requires a capture from the
+  Share Sheet to schedule its default reminder without starting the Flutter engine, and 3.4 requires
+  one-tap resolution FROM the notification. A Flutter plugin cannot do either while the engine is
+  not running.
+Decision: One scheduler, in Kotlin. `ReminderScheduler` (AlarmManager), `ReminderReceiver`
+  (notification + `resurfaced` event), `NotificationActionReceiver` (Done/Snooze written straight to
+  SQLite), `BootReceiver` (re-arm after reboot). The app reaches the SAME scheduler through a
+  `MethodChannel` (`ReminderPort` -> `PlatformReminderScheduler`), so a promise captured in the app
+  and one captured from a share behave identically. `domain/` depends only on the
+  `ReminderScheduler` interface and stays pure Dart.
+Consequences: No Flutter dependency anywhere on the resurfacing path, which is what makes the loop
+  work when the app has never been opened. Cost: the escalation ladder and the snooze limit now
+  exist in two places (SnoozePolicy in Dart, CyaStore/ReminderNotifications in Kotlin) and must be
+  kept in step - both are covered by tests, and iOS will need its own implementation.
+  Rejected: also disabled Flutter's automatic deep linking, because it hands the raw `cya://` URI to
+  go_router as a location; MainActivity passes it over the channel instead.
+```
+
 ### 13.4 Mistakes & lessons learned
 ```
 [L-001] The shared database is only as portable as the weakest SQLite that opens it
@@ -613,6 +661,24 @@ Lesson / rule to remember going forward: When two runtimes share a database file
   only use features BOTH SQLite builds have. Anything richer belongs to whichever side bundles its
   own engine, as a derived artifact it maintains itself. Green tests on one runtime prove nothing
   about the other - the two-runtime path needs a device run before it can be called done.
+```
+
+```
+[L-002] A non-local `return` inside an inline `transaction { }` silently rolled back every capture
+What broke / went wrong: After refactoring the native writer into `CyaStore`, Share Sheet captures
+  logged `capture_ok id=1` and returned a row id - but the database was empty. The reminder receiver
+  then reported "no longer pending" for a promise that had never been stored.
+Why: `transaction { }` is a Kotlin *inline* helper that calls `setTransactionSuccessful()` after the
+  lambda and `endTransaction()` in a `finally`. `capture` returned its result from *inside* the
+  lambda, which is a non-local return: it unwound straight past `setTransactionSuccessful()` into the
+  `finally`, so SQLite rolled the transaction back. `insertOrThrow` had already handed back the
+  row id, so every signal said success.
+Fix: return the value as the lambda's last expression, never with `return`; early exits use a
+  labelled `return@transaction`. The helper now carries a doc comment saying exactly this.
+Lesson / rule to remember going forward: an inline block that must run code *after* your body is a
+  trap for `return`. More generally: a write is not verified by the writer's own return value -
+  verify it by reading the data back (`sqlite3` on the device), which is what finally caught this.
+  Refactoring native code needs its own device run; the Dart tests could never have seen this.
 ```
 
 ### 13.5 Test & verification log
@@ -634,6 +700,14 @@ Lesson / rule to remember going forward: When two runtimes share a database file
 | 2026-08-31 | Native-created database opened by Drift | ✅ | user_version=1, no migration, all six rows read; XP projected 60 from native events. |
 | 2026-08-31 | FTS search over a natively written row | ✅ | "paper" matched a promise Dart never wrote (index reconciled from the watermark). |
 | 2026-08-31 | On-device value encodings | ✅ | captured_at/reminder_at are epoch SECONDS; reminder = tonight 20:00; deep_link extracted from the shared URL. |
+| 2026-08-31 | Exact alarm registered by the capture path | ✅ | `dumpsys alarm`: RTC_WAKEUP, window=0, exactAllowReason=policy_permission, origWhen 20:00:00. |
+| 2026-08-31 | Real alarm fires (clock advanced to 19:59:30) | ✅ 20:00:00.483 | Quiet-channel notification with Done + Snooze. |
+| 2026-08-31 | One-tap Done from the notification | ✅ | Row resolved, `resolved{"surface":"notification"}` logged, notification dismissed, alarm cancelled — no Flutter engine. |
+| 2026-08-31 | Escalation quiet → banner → digest | ✅ | Second fire used cya_reminders_banner; at snooze_count 3 the fire logged tier=digest and posted nothing. |
+| 2026-08-31 | Snooze limit enforced natively | ✅ | 4th snooze `granted=false`; the promise is re-shown quietly asking to close the loop. |
+| 2026-08-31 | Boot rescheduling | ✅ | BOOT_COMPLETED → `rescheduled count=1`. |
+| 2026-08-31 | `cya://promise/<id>` deep link, cold start | ✅ | Opens Promise Detail (after disabling Flutter's own deep-link handling). |
+| 2026-08-31 | `flutter test` (74 tests) | ✅ 74/74 | +7 missed-reminder detection, +7 scheduling side effects. |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?

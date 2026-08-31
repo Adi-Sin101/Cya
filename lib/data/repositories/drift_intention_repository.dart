@@ -50,6 +50,12 @@ class DriftIntentionRepository implements IntentionRepository {
   Future<Intention?> nextScheduled(DateTime after) => _dao.nextScheduled(after);
 
   @override
+  Future<List<Intention>> missedReminders(
+    DateTime now, {
+    Duration grace = const Duration(minutes: 10),
+  }) => _dao.missedReminders(now, grace: grace);
+
+  @override
   Future<int> count() => _dao.countAll();
 
   @override

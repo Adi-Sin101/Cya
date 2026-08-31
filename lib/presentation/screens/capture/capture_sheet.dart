@@ -208,6 +208,9 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
     result.fold(
       (_) {
         HapticFeedback.lightImpact();
+        // The promise is saved either way; this only decides whether Cya! may
+        // knock (PRD §3.5 — asked here, where the reason is on screen).
+        ref.read(reminderPortProvider).ensureNotificationPermission();
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()

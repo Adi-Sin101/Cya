@@ -11,6 +11,7 @@ import '../../providers/settings_providers.dart';
 import 'widgets/home_greeting_header.dart';
 import 'widgets/memory_garden_preview.dart';
 import 'widgets/promise_list_section.dart';
+import 'widgets/reminder_health_banner.dart';
 import 'widgets/today_card.dart';
 import 'widgets/week_stats_section.dart';
 
@@ -31,6 +32,7 @@ class HomeScreen extends StatelessWidget {
         children: const <Widget>[
           _GreetingSection(),
           SizedBox(height: 20),
+          ReminderHealthBanner(),
           _TodaySection(),
           SizedBox(height: 24),
           _PromisesSection(),

@@ -3,6 +3,7 @@ import '../../core/utils/clock.dart';
 import '../entities/intention.dart';
 import '../enums/reminder_preset.dart';
 import '../repositories/intention_repository.dart';
+import '../services/reminder_scheduler.dart';
 
 /// Save a new promise (PRD §3.2).
 ///
@@ -10,10 +11,11 @@ import '../repositories/intention_repository.dart';
 /// surfaces do — one insert plus a default reminder — and nothing more: no
 /// network, no inference. Enrichment happens later, off this path.
 class CaptureIntention {
-  const CaptureIntention(this._repository, this._clock);
+  const CaptureIntention(this._repository, this._clock, this._scheduler);
 
   final IntentionRepository _repository;
   final Clock _clock;
+  final ReminderScheduler _scheduler;
 
   /// Source label used when the user types straight into the app.
   static const String inAppSource = 'Cya!';
@@ -50,6 +52,9 @@ class CaptureIntention {
           reminderAt: reminder,
         ),
       );
+      // Capture is not finished until the promise is scheduled to come back
+      // — capture without resurfacing is just another inbox (PRD §3.4).
+      await _scheduler.schedule(id, reminder);
       return Result.success(id);
     } on Object catch (error, stackTrace) {
       return Result.failure(StorageError(error, stackTrace));

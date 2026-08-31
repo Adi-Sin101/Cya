@@ -6,6 +6,7 @@ import 'package:cya/domain/entities/intention.dart';
 import 'package:cya/domain/enums/reminder_preset.dart';
 import 'package:cya/presentation/app/cya_app.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -13,8 +14,29 @@ void main() {
   late CyaDatabase db;
   final now = DateTime(2026, 3, 4, 18, 30);
 
-  setUp(() => db = CyaDatabase.memory());
-  tearDown(() => db.close());
+  setUp(() {
+    db = CyaDatabase.memory();
+    // Stand in for the native reminder scheduler. Its real behaviour is
+    // covered in test/domain/usecases_test.dart; here it only needs to answer,
+    // so the UI is never left waiting on a platform channel.
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('cya/reminders'), (
+          call,
+        ) async {
+          return switch (call.method) {
+            'canScheduleExact' => true,
+            'ensureNotificationPermission' => true,
+            'rescheduleAll' => 0,
+            _ => null,
+          };
+        });
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('cya/reminders'), null);
+    return db.close();
+  });
 
   Future<void> capture(String content, {bool resolved = false}) async {
     final id = await db.intentionDao.capture(

@@ -7,10 +7,13 @@ import '../../data/db/cya_database.dart';
 import '../../data/repositories/drift_intention_repository.dart';
 import '../../data/seed/demo_seed.dart';
 import '../../domain/repositories/intention_repository.dart';
+import '../../domain/services/reminder_scheduler.dart';
 import '../../domain/usecases/capture_intention.dart';
 import '../../domain/usecases/manage_intention.dart';
 import '../../domain/usecases/resolve_intention.dart';
 import '../../domain/usecases/snooze_intention.dart';
+import '../../native/platform_reminder_scheduler.dart';
+import '../../native/reminder_port.dart';
 import '../utils/clock.dart';
 
 /// Infrastructure DI (PRD §5.3 — `core/` owns wiring).
@@ -41,10 +44,21 @@ final intentionRepositoryProvider = Provider<IntentionRepository>(
 /// Overridable "now" so time-dependent behaviour is testable (see [Clock]).
 final clockProvider = Provider<Clock>((ref) => systemClock);
 
+final reminderPortProvider = Provider<ReminderPort>(
+  (ref) => const ReminderPort(),
+);
+
+/// Reminders are armed by the *native* scheduler — the same one the Share
+/// Sheet capture path uses, so both surfaces behave identically (PRD §5.6).
+final reminderSchedulerProvider = Provider<ReminderScheduler>(
+  (ref) => PlatformReminderScheduler(ref.watch(reminderPortProvider)),
+);
+
 final captureIntentionProvider = Provider<CaptureIntention>(
   (ref) => CaptureIntention(
     ref.watch(intentionRepositoryProvider),
     ref.watch(clockProvider),
+    ref.watch(reminderSchedulerProvider),
   ),
 );
 
@@ -52,6 +66,7 @@ final resolveIntentionProvider = Provider<ResolveIntention>(
   (ref) => ResolveIntention(
     ref.watch(intentionRepositoryProvider),
     ref.watch(clockProvider),
+    ref.watch(reminderSchedulerProvider),
   ),
 );
 
@@ -59,6 +74,7 @@ final snoozeIntentionProvider = Provider<SnoozeIntention>(
   (ref) => SnoozeIntention(
     ref.watch(intentionRepositoryProvider),
     ref.watch(clockProvider),
+    ref.watch(reminderSchedulerProvider),
   ),
 );
 
@@ -66,6 +82,7 @@ final manageIntentionProvider = Provider<ManageIntention>(
   (ref) => ManageIntention(
     ref.watch(intentionRepositoryProvider),
     ref.watch(clockProvider),
+    ref.watch(reminderSchedulerProvider),
   ),
 );
 

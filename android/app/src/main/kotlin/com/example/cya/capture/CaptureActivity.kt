@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.os.SystemClock
 import android.util.Log
 import android.widget.Toast
+import com.example.cya.reminders.ReminderScheduler
 
 /**
  * The Share Sheet capture surface (PRD §6.1) and the strictest expression of the native-thin
@@ -31,18 +32,21 @@ class CaptureActivity : Activity() {
 
         val now = System.currentTimeMillis()
         try {
-            val result = CaptureWriter(this).write(
-                CaptureWriter.Capture(
+            val reminderAt = ReminderDefaults.tonight(now)
+            val result = CyaStore(this).capture(
+                CyaStore.Capture(
                     sourceApp = resolveSourceApp(),
                     rawContent = text.trim(),
                     snippet = intent.getStringExtra(Intent.EXTRA_SUBJECT)?.takeIf(String::isNotBlank),
                     deepLink = text.firstUrlOrNull(),
                     capturedAtMillis = now,
                     // Zero-tap default: a capture completes with no extra taps (PRD §6.1).
-                    reminderAtMillis = ReminderDefaults.tonight(now),
+                    reminderAtMillis = reminderAt,
                 ),
                 startedAtElapsedMillis = startedAt,
             )
+            // The second and last thing the capture path does (PRD §5.4): one insert, one alarm.
+            ReminderScheduler.schedule(this, result.intentionId, reminderAt)
             // Single tagged line so an adb run can assert the §9.2 budget.
             Log.i(TAG, "capture_ok id=${result.intentionId} capture_ms=${result.elapsedMillis}")
             toast("Saved. I'll remember for you.")

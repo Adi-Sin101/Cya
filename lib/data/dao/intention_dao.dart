@@ -130,6 +130,34 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
     return tokens.map((token) => '"$token"*').join(' ');
   }
 
+  /// Promises whose reminder time has passed with **no `resurfaced` event** —
+  /// alarms the OS never delivered (PRD §12: OEM battery optimization silently
+  /// dropping reminders is the risk that would quietly kill a memory product).
+  ///
+  /// Measured rather than assumed: because every fired reminder writes an
+  /// event, their absence is evidence.
+  Future<List<Intention>> missedReminders(
+    DateTime now, {
+    Duration grace = const Duration(minutes: 10),
+  }) async {
+    final cutoff = now.subtract(grace).millisecondsSinceEpoch ~/ 1000;
+    final rows = await customSelect(
+      'SELECT i.* FROM intentions i '
+      "WHERE i.status IN ('open', 'snoozed') "
+      'AND i.reminder_at IS NOT NULL AND i.reminder_at <= ?1 '
+      'AND NOT EXISTS ('
+      '  SELECT 1 FROM intention_events e '
+      "  WHERE e.intention_id = i.id AND e.type = 'resurfaced' "
+      '  AND e.occurred_at >= i.reminder_at'
+      ') ORDER BY i.reminder_at',
+      variables: [Variable<int>(cutoff)],
+      readsFrom: {intentions, intentionEvents},
+    ).get();
+    return rows
+        .map((row) => intentions.map(row.data).toEntity())
+        .toList(growable: false);
+  }
+
   // ----------------------------------------------------------- event log
 
   Stream<List<IntentionEvent>> watchEventsSince(DateTime since) {

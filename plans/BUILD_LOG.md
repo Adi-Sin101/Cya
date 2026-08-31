@@ -347,3 +347,77 @@ Format for each entry:
 - Next: iteration 4 — AlarmManager scheduling, notification channels mapped to the escalation tiers,
   one-tap resolution from the notification (native write, no engine), boot rescheduling, and the
   `cya://promise/<id>` deep link into promise detail.
+
+## 2026-08-31 — Iteration 4: closing the loop (alarms, notifications, escalation, one-tap resolution)
+- Plan: plans/iteration-4-reminders-escalation.md
+- Goal: Make a captured promise actually come back, and let the user close it **from the
+  notification** without opening the app (PRD §3.4, §5.6, §8.4, §9.2, §12).
+- Done:
+  - **`ReminderScheduler` (Kotlin)** — `setExactAndAllowWhileIdle`, degrading to
+    `setAndAllowWhileIdle` (with a log line) when exact alarms are not permitted, because a late
+    reminder beats none. Alarms carry only the intention id; everything shown is read from the store
+    at fire time, so a reminder can never surface stale content. `rescheduleAll()` re-arms from the
+    database and fires anything already overdue rather than dropping it.
+  - **`ReminderReceiver`** — skips promises that are no longer pending, maps `snooze_count` to the
+    escalation tier (the same rule as `SnoozePolicy.tierFor`), posts on the quiet or banner channel,
+    and writes a `resurfaced` event *even when the tier is digest and nothing is shown* — that event
+    is how reminder reliability becomes measurable (§9.2).
+  - **`NotificationActionReceiver`** — Done and Snooze write straight to SQLite, the same
+    native-thin way capture does. A refused fourth snooze re-shows the promise *quietly* with
+    "You've pushed this back 3 times", instead of silently ignoring the tap.
+  - **`BootReceiver`** — alarms do not survive a reboot; they are re-armed from the store.
+  - **`CyaStore`** — the native store grew from capture-only to the full engine-free vocabulary:
+    capture, findById, resolve, snooze (limit enforced), markResurfaced, pendingReminders.
+  - **Dart side:** `ReminderPort` (MethodChannel) + `PlatformReminderScheduler` behind a pure-domain
+    `ReminderScheduler` interface, so use-cases arm and cancel alarms without `domain/` importing
+    Flutter. Capture schedules, resolve cancels, snooze re-arms, archive/delete cancel, reopen
+    restores a still-future reminder.
+  - **Reliability, measured not assumed (§12):** `missedReminders()` finds pending promises whose
+    reminder passed with no `resurfaced` event; a Home banner appears only on that evidence and
+    offers the actual fix (exact-alarm settings, or re-arm everything). Alarms are also re-armed on
+    every app resume.
+  - **Deep link** `cya://promise/<id>` from the notification body into Promise Detail.
+  - Notification permission is requested right after a capture, where its reason is on screen.
+- Verified / working (emulator API 34):
+  - Capture registers a real exact alarm — `dumpsys alarm`: `RTC_WAKEUP … window=0
+    exactAllowReason=policy_permission origWhen=2026-08-31 20:00:00.000`.
+  - **A real alarm fired**: with the device clock advanced to 19:59:30, at `20:00:00.483` the quiet
+    notification appeared with Done + Snooze; the snoozed-three-times promise fired at
+    `20:00:00.137` as `tier=digest` and posted nothing.
+  - **Done from the notification** → row `resolved`, `resolved{"surface":"notification"}` in the log,
+    notification dismissed, alarm cancelled — Flutter never started.
+  - **Escalation** → first fire `cya_reminders_quiet`; after one snooze the next fire used
+    `cya_reminders_banner`; the fourth snooze was refused (`granted=false`).
+  - **Boot** → `BOOT_COMPLETED` → `rescheduled count=1`.
+  - **Deep link** → cold start into Promise Detail (screenshot in `build/verification/`).
+  - `flutter analyze` 0 · `flutter test` **74/74** · debug APK builds.
+- Broke / deferred:
+  - **Captures were silently rolled back.** After moving the native writer into `CyaStore`, every
+    Share Sheet capture logged `capture_ok id=1` while the database stayed empty. Cause: `capture`
+    returned from *inside* the inline `transaction { }` lambda — a non-local return that unwinds past
+    `setTransactionSuccessful()` into the `finally`, rolling the transaction back. Fixed by returning
+    the lambda's last expression (and `return@transaction` for early exits), with the trap documented
+    on the helper. Recorded as PRD §13.4 [L-002].
+  - **Deep links 404'd**: Flutter's automatic deep linking handed go_router the raw `cya://promise/2`
+    as a *location*. Disabled it (`flutter_deeplinking_enabled=false`); MainActivity passes the link
+    over the reminder channel and the app routes it itself.
+  - **The notification icon was a hollow blob**: status-bar small icons are alpha masks, so the
+    launcher icon cannot be used. Generated `ic_stat_cya` — a white bookmark silhouette — in all five
+    density buckets.
+  - A widget test began hanging on `pumpAndSettle` once the capture path talked to a platform
+    channel: the save spinner never stopped. Fixed by mocking the `cya/reminders` channel in the
+    test, which also documents the channel's shape.
+  - Still open: the weekly digest (escalation's third rung currently just stays quiet); Garden and
+    Achievements screens; Rive reward moments; iOS has no scheduler.
+- Lesson / rule:
+  - **A write is not verified by the writer's own return value.** `insertOrThrow` returned an id for
+    a row that was rolled back moments later. Read the data back — `sqlite3` on the device — before
+    believing a native write.
+  - **An inline block that runs code *after* your body is a trap for `return`.** In Kotlin, prefer
+    the last expression; if you need an early exit, label it.
+  - **Refactoring native code needs its own device run.** All 60 Dart tests were green while every
+    native capture was being discarded.
+  - Escalation's top rung should be *quieter*, not louder. Past the snooze limit Cya! stops
+    interrupting and asks to close the loop instead — nagging is how a memory product becomes the
+    backlog it was meant to prevent.
+- Next: iteration 5 — the Memory Garden, achievements, reward animations, and the weekly digest.
