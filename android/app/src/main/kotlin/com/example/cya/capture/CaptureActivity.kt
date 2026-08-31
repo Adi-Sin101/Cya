@@ -20,8 +20,23 @@ import com.example.cya.reminders.ReminderScheduler
 class CaptureActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        val startedAt = SystemClock.elapsedRealtime()
         super.onCreate(savedInstanceState)
+        handle(intent)
+    }
+
+    /**
+     * A second share arriving while this instance is still finishing is delivered here rather than
+     * to a new instance. Without this it would be silently dropped — and a lost capture is the one
+     * failure this product cannot have (PRD §13.4 [L-003]).
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handle(intent)
+    }
+
+    private fun handle(intent: Intent?) {
+        val startedAt = SystemClock.elapsedRealtime()
 
         val text = extractSharedText(intent)
         if (text.isNullOrBlank()) {
@@ -37,7 +52,9 @@ class CaptureActivity : Activity() {
                 CyaStore.Capture(
                     sourceApp = resolveSourceApp(),
                     rawContent = text.trim(),
-                    snippet = intent.getStringExtra(Intent.EXTRA_SUBJECT)?.takeIf(String::isNotBlank),
+                    snippet = intent
+                        ?.getStringExtra(Intent.EXTRA_SUBJECT)
+                        ?.takeIf(String::isNotBlank),
                     deepLink = text.firstUrlOrNull(),
                     capturedAtMillis = now,
                     // Zero-tap default: a capture completes with no extra taps (PRD §6.1).

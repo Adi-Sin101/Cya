@@ -421,3 +421,43 @@ Format for each entry:
     interrupting and asks to close the loop instead — nagging is how a memory product becomes the
     backlog it was meant to prevent.
 - Next: iteration 5 — the Memory Garden, achievements, reward animations, and the weekly digest.
+
+## 2026-08-31 — Iteration 5 (part 1): the Memory Garden and Achievements
+- Plan: plans/iteration-5-garden-achievements-digest.md
+- Goal: Turn the two placeholder tabs into the reward half of the product (PRD §6.6, §8.2) — the
+  part that makes closing the loop worth doing.
+- Done:
+  - **`GardenProjection`** — kept promises become plants, grouped into weekly beds; a plant's
+    species is derived from its intention id (the same promise always grows into the same plant),
+    its growth from how long ago it was kept, and the streak counts consecutive days with a
+    resolution, forgiving a today that has not happened yet.
+  - **`AchievementProjection`** — the six badges named in §8.2 as predicates over counts, with
+    `newlyUnlocked(before, after)` for celebrating a change. Nothing stored, so a badge can never
+    disagree with the event log.
+  - **Garden screen** — a `CustomPainter` scene per bed inside a `RepaintBoundary` (a mature garden
+    is hundreds of plants; a widget each would be the obvious way to drop frames), five hand-drawn
+    plant species with deterministic posture, a soil bed, an animate-in that respects reduced
+    motion, and a designed empty state.
+  - **Achievements screen** — grid with locked/unlocked states, where locked badges show real
+    progress. Profile links to both instead of saying "Coming soon".
+  - Two narrow queries feed it: `watchResolutions()` (only resolved events) and one aggregate for
+    the *Reader* and *Communicator* counts.
+- Verified / working (emulator API 34): six captures with four kept across three weeks rendered as
+  "This week / Last week / Week of Aug 17" with a 3-day streak and 4 all-time; Achievements showed
+  1 of 6 unlocked with correct progress (4/100, 1/50 — the 1 being the single kept promise that
+  carried a link, which exercises the flavour query end to end). `flutter analyze` 0 ·
+  `flutter test` 93/93.
+- Broke / deferred:
+  - The first painted garden read as sticks on a bar: plants hugged the left edge, the soil was
+    nearly invisible, and one species drew as a hard triangle that looked like an arrow. Redrawn —
+    plants centre and spread across the bed, stems bend, and the species are a sprout, a flower with
+    a centre, a bush, a canopy tree and a grass tuft. Worth the second pass: the PRD treats beauty
+    as an acceptance criterion, not a nicety.
+  - **Rive reward moments are not built** — there are no `.riv` assets, and inventing a mascot rig
+    is a design job, not a coding one. Logged as an open question rather than faked.
+  - The weekly digest is still open; escalation's third rung stays quiet in the meantime.
+- Lesson / rule: a projection-shaped feature is cheap to add *and* cheap to trust — the garden, the
+  stats and the badges cannot drift apart, because they are three readings of one event log.
+  Screenshot the result before believing it: the projections were right on the first try and the
+  drawing was wrong, and only one of those is visible in a test.
+- Next: the weekly digest, then enrichment (on-device date extraction, auto-categorization).

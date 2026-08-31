@@ -7,6 +7,8 @@ import '../../domain/enums/intention_event_type.dart';
 import '../../domain/models/garden_summary.dart';
 import '../../domain/models/user_level.dart';
 import '../../domain/models/week_stats.dart';
+import '../../domain/projections/achievement_projection.dart';
+import '../../domain/projections/garden_projection.dart';
 import '../../domain/projections/week_projection.dart';
 import '../../domain/projections/xp_projection.dart';
 
@@ -88,3 +90,40 @@ final intentionSearchProvider = FutureProvider.autoDispose
       }
       return ref.watch(intentionRepositoryProvider).search(query);
     });
+
+/// The Memory Garden, grown from every kept promise (PRD §6.6).
+final gardenSceneProvider = Provider.autoDispose<GardenScene>((ref) {
+  final resolutions =
+      ref.watch(_resolutionsProvider).valueOrNull ?? const <IntentionEvent>[];
+  return GardenProjection.build(resolutions, ref.watch(clockProvider)());
+});
+
+final _resolutionsProvider = StreamProvider.autoDispose<List<IntentionEvent>>(
+  (ref) => ref.watch(intentionRepositoryProvider).watchResolutions(),
+);
+
+final _resolvedBreakdownProvider =
+    StreamProvider.autoDispose<({int links, int conversations})>(
+      (ref) => ref.watch(intentionRepositoryProvider).watchResolvedBreakdown(),
+    );
+
+/// Everything the badges are decided from — counts plus the current streak.
+final achievementStatsProvider = Provider.autoDispose<AchievementStats>((ref) {
+  final counts =
+      ref.watch(eventCountsProvider).valueOrNull ??
+      const <IntentionEventType, int>{};
+  final breakdown =
+      ref.watch(_resolvedBreakdownProvider).valueOrNull ??
+      (links: 0, conversations: 0);
+  return AchievementStats(
+    captured: counts[IntentionEventType.captured] ?? 0,
+    resolved: counts[IntentionEventType.resolved] ?? 0,
+    linksResolved: breakdown.links,
+    conversationsResolved: breakdown.conversations,
+    streakDays: ref.watch(gardenSceneProvider).streakDays,
+  );
+});
+
+final achievementsProvider = Provider.autoDispose<List<Achievement>>(
+  (ref) => AchievementProjection.evaluate(ref.watch(achievementStatsProvider)),
+);

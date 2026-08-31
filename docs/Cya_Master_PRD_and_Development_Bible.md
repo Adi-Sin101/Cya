@@ -429,8 +429,8 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Quick Settings Tile | ⬜ | | | |
 | Home-screen widget | ⬜ | | | |
 | Categories + FTS search | 🟨 | 2026-08-31 | Partly | FTS5 search live and verified against natively written rows (Dart-owned index, ADR-005). Manual categories stored but no category UI yet. |
-| Gamification (XP/levels/garden) | 🟨 | 2026-08-31 | Partly | XP/level/week/garden are pure projections over the log (ADR-002). Rive reward animations still to come. |
-| Achievements | ⬜ | | | |
+| Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the full Memory Garden (weekly beds, plant species, streak) are pure projections. Rive reward moments still deferred — see 13.6. |
+| Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
 | Weekly digest | ⬜ | | | Escalation's third rung already routes here — the digest itself is iteration 5. |
 | Enrichment (date extraction) | ⬜ | | | Fast-follow. |
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
@@ -516,6 +516,24 @@ Session 2026-08-31 - Iteration 4 (closing the loop: alarms, notifications, escal
   silhouette (`ic_stat_cya`) was generated. The weekly digest itself is iteration 5.
 - Next: iteration 5 - Memory Garden, achievements, reward animations, and the weekly digest that
   escalation's third rung already points at.
+
+Session 2026-08-31 - Iteration 5 (the reward half: Memory Garden + achievements)
+- Goal: Turn the two placeholder tabs into the reward half of the product (6.6, 8.2) - the thing
+  that makes closing the loop worth doing.
+- Done: GardenProjection (plants, weekly beds, growth over a week, streak) and
+  AchievementProjection (six badges as predicates over counts), both pure and tested; a
+  CustomPainter garden scene inside a RepaintBoundary with five plant species, deterministic
+  posture per promise, and a reduced-motion variant; the Garden screen (streak/this-week/all-time
+  header, weekly beds, designed empty state); the Achievements grid with progress on locked badges;
+  Profile now links to both instead of saying "Coming soon".
+- Working / verified on emulator (API 34): six captures with four resolved across three weeks
+  rendered as This week / Last week / Week of Aug 17 beds with distinct plants, 3-day streak,
+  4 all-time; Achievements showed 1 of 6 unlocked with real progress (4/100, 1/50 - the 1 being the
+  one kept promise that carried a link, which exercises the flavour query). 93 tests green.
+- Not working / deferred: Rive reward animations (no .riv assets exist yet - the garden animates
+  with Flutter instead, and reward moments are not built); the weekly digest.
+- Next: the weekly digest (escalation's third rung), then enrichment (on-device date extraction and
+  auto-categorization).
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -708,6 +726,9 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 | 2026-08-31 | Boot rescheduling | ✅ | BOOT_COMPLETED → `rescheduled count=1`. |
 | 2026-08-31 | `cya://promise/<id>` deep link, cold start | ✅ | Opens Promise Detail (after disabling Flutter's own deep-link handling). |
 | 2026-08-31 | `flutter test` (74 tests) | ✅ 74/74 | +7 missed-reminder detection, +7 scheduling side effects. |
+| 2026-08-31 | Garden + achievement projections | ✅ | 16 unit tests: weekly beds, stable species per promise, growth over a week, streak rules (same-day, missed day, grace for today), badge predicates and progress. |
+| 2026-08-31 | Garden and Achievements on device | ✅ | 4 kept promises across 3 weeks rendered as beds with a 3-day streak; 1 of 6 badges unlocked with correct progress. |
+| 2026-08-31 | `flutter test` (93 tests) | ✅ 93/93 | +16 projections, +3 widget tests (garden populated, garden empty, achievements). |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?
@@ -715,6 +736,8 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 - Should the day boundary roll over live while the app is open (midnight timer), or is a resume-time refresh enough?
 - ~~Exact XP weights for capture vs resolution; level curve.~~ Decided in ADR-002.
 - Digest timing/frequency defaults.
+- Rive reward animations (8.3) need designed .riv assets before they can be built; the garden
+  currently animates with Flutter's own animation system. Who produces the mascot rig?
 
 ---
 

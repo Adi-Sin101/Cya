@@ -38,6 +38,13 @@ class DriftIntentionRepository implements IntentionRepository {
       _dao.watchEventCounts();
 
   @override
+  Stream<List<IntentionEvent>> watchResolutions() => _dao.watchResolutions();
+
+  @override
+  Stream<({int links, int conversations})> watchResolvedBreakdown() =>
+      _dao.watchResolvedBreakdown();
+
+  @override
   Future<List<Intention>> search(String query) => _dao.search(query);
 
   @override

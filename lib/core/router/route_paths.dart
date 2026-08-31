@@ -13,4 +13,7 @@ abstract final class RoutePaths {
   static const String promiseDetailPattern = '/promise/:id';
 
   static String promiseDetail(int id) => '/promise/$id';
+
+  /// Full achievements grid, opened from Profile (PRD §8.2).
+  static const String achievements = '/achievements';
 }

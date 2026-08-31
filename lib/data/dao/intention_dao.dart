@@ -190,6 +190,52 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
     });
   }
 
+  /// Every kept promise, oldest first — the Memory Garden's raw material
+  /// (PRD §6.6). Only `resolved` rows, so the stream stays proportional to what
+  /// the garden actually draws rather than to the whole log.
+  Stream<List<IntentionEvent>> watchResolutions() {
+    final query = select(intentionEvents)
+      ..where((t) => t.type.equals(IntentionEventType.resolved.wire))
+      ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]);
+    return query.watch().map((rows) => rows.toEntities());
+  }
+
+  /// The two flavour counts the achievement badges need (PRD §8.2 *Reader* and
+  /// *Communicator*), as one aggregate rather than a scan in Dart.
+  ///
+  /// Counted over current-state rows: a promise resolved, reopened and resolved
+  /// again is one kept promise, not two.
+  Stream<({int links, int conversations})> watchResolvedBreakdown() {
+    final apps = _messagingApps.map((app) => "'$app'").join(', ');
+    return customSelect(
+      'SELECT '
+      'SUM(CASE WHEN deep_link IS NOT NULL THEN 1 ELSE 0 END) AS links, '
+      'SUM(CASE WHEN LOWER(source_app) IN ($apps) THEN 1 ELSE 0 END) '
+      'AS conversations '
+      "FROM intentions WHERE status = 'resolved'",
+      readsFrom: {intentions},
+    ).watch().map((rows) {
+      final row = rows.first;
+      return (
+        links: row.read<int?>('links') ?? 0,
+        conversations: row.read<int?>('conversations') ?? 0,
+      );
+    });
+  }
+
+  /// Apps whose promises count as conversations. Lower-case; matched exactly.
+  static const List<String> _messagingApps = <String>[
+    'messenger',
+    'whatsapp',
+    'telegram',
+    'signal',
+    'discord',
+    'slack',
+    'messages',
+    'gmail',
+    'instagram',
+  ];
+
   // ----------------------------------------------------------- mutations
 
   /// The capture write: one row + one `captured` event, nothing else

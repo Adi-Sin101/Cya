@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../presentation/screens/achievements/achievements_screen.dart';
 import '../../presentation/screens/garden/garden_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
@@ -55,6 +56,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.achievements,
+        builder: (context, state) => const AchievementsScreen(),
       ),
       GoRoute(
         path: RoutePaths.promiseDetailPattern,

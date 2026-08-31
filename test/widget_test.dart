@@ -159,4 +159,48 @@ void main() {
     expect(await db.preferenceDao.read('theme_mode'), 'dark');
     await disposeApp(tester);
   });
+
+  testWidgets('The Garden grows a plant for every promise kept', (
+    tester,
+  ) async {
+    await capture('Reply to Sarah', resolved: true);
+    await capture('Read AI Paper');
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Garden'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Memory Garden'), findsOneWidget);
+    expect(find.text('1 promises kept, and counting.'), findsOneWidget);
+    expect(find.text('1 growth'), findsOneWidget);
+    await disposeApp(tester);
+  });
+
+  testWidgets('An empty Garden says so rather than showing nothing', (
+    tester,
+  ) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Garden'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bare soil, for now'), findsOneWidget);
+    await disposeApp(tester);
+  });
+
+  testWidgets('Achievements unlock from the event log', (tester) async {
+    await capture('Reply to Sarah');
+    await pumpApp(tester);
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Achievements'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 of 6 unlocked.'), findsOneWidget);
+    expect(find.text('First Step'), findsOneWidget);
+    expect(find.text('Unlocked'), findsOneWidget);
+    // A locked badge shows how far away it is.
+    expect(find.text('0 / 100'), findsWidgets);
+    await disposeApp(tester);
+  });
 }

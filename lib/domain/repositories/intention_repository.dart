@@ -26,6 +26,12 @@ abstract interface class IntentionRepository {
   /// Lifetime counts per event type — the narrow aggregate XP projects from.
   Stream<Map<IntentionEventType, int>> watchEventCounts();
 
+  /// Every kept promise, oldest first — what the Memory Garden grows from.
+  Stream<List<IntentionEvent>> watchResolutions();
+
+  /// Kept promises that carried a link, and that came from a messaging app.
+  Stream<({int links, int conversations})> watchResolvedBreakdown();
+
   Future<List<Intention>> search(String query);
 
   Future<Intention?> findById(int id);

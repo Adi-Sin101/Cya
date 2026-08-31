@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/cya_colors_extension.dart';
+import '../../../core/router/route_paths.dart';
+import '../../providers/intention_providers.dart';
 import '../../providers/settings_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -87,7 +90,42 @@ class ProfileScreen extends ConsumerWidget {
             child: ListTile(
               leading: Icon(Icons.emoji_events_rounded, color: colors.primary),
               title: Text('Achievements', style: theme.textTheme.titleMedium),
-              subtitle: Text('Coming soon', style: theme.textTheme.bodySmall),
+              subtitle: Builder(
+                builder: (context) {
+                  final unlocked = ref
+                      .watch(achievementsProvider)
+                      .where((a) => a.isUnlocked)
+                      .length;
+                  return Text(
+                    unlocked == 0
+                        ? 'Your first badge is one promise away'
+                        : '$unlocked unlocked',
+                    style: theme.textTheme.bodySmall,
+                  );
+                },
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push(RoutePaths.achievements),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Card(
+            child: ListTile(
+              leading: Icon(Icons.local_florist_rounded, color: colors.primary),
+              title: Text('Memory Garden', style: theme.textTheme.titleMedium),
+              subtitle: Builder(
+                builder: (context) {
+                  final scene = ref.watch(gardenSceneProvider);
+                  return Text(
+                    scene.isEmpty
+                        ? 'Nothing growing yet'
+                        : '${scene.totalGrowths} promises kept',
+                    style: theme.textTheme.bodySmall,
+                  );
+                },
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.go(RoutePaths.garden),
             ),
           ),
         ],
