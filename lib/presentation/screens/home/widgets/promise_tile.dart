@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../../core/theme/cya_colors_extension.dart';
 import '../../../../core/utils/reminder_format.dart';
 import '../../../../domain/entities/intention.dart';
+import '../../../../domain/enums/promise_category.dart';
+import '../../promise_detail/widgets/category_picker.dart' show categoryIcon;
 import 'reminder_chip.dart';
 
 /// A single row in "Today's Promises": app icon, title, source + time, reminder
@@ -74,6 +76,15 @@ class PromiseTile extends StatelessWidget {
                     const SizedBox(height: 3),
                     Row(
                       children: <Widget>[
+                        if (PromiseCategory.fromWire(promise.category)
+                            case final category?) ...<Widget>[
+                          Icon(
+                            categoryIcon(category),
+                            size: 13,
+                            color: theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 4),
+                        ],
                         Flexible(
                           child: Text(
                             '${promise.sourceApp} · ${reminder.timeLabel}',

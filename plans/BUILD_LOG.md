@@ -488,3 +488,30 @@ Format for each entry:
   preview.
 - Next: enrichment — on-device date extraction and rule-based auto-categorization, both strictly off
   the capture path (PRD §3.2).
+
+## 2026-08-31 — Iteration 6: Quick Settings Tile and manual categories
+- Plan: plans/iteration-5-garden-achievements-digest.md (follow-on; the remaining Phase 1 items)
+- Goal: Close the two Phase 1 items that are not the home-screen widget — a second capture surface
+  (PRD §6.1) and manual categories (§6.4).
+- Done:
+  - **`CyaTileService` + `QuickCaptureActivity`** — a tile cannot read the screen, so this is the one
+    capture surface that needs a text field. It is still engine-free: a dialog built programmatically
+    in Kotlin (no XML inflation, no Flutter), **pre-filled from the clipboard** so the common case —
+    "I just copied this" — is a single tap, and saving runs the same one-insert-plus-one-alarm path
+    as every other surface.
+  - **`PromiseCategory`** — seven fixed categories. A short list on purpose: the product's job is to
+    make "later" cheap, and free-form tagging turns every capture into a filing decision. The wire
+    values are stored, because auto-categorization will later write the same ones.
+  - Category picker on Promise Detail (tapping the current one clears it), filter chips on the
+    Promises tab, and a category icon on every promise tile.
+  - Chips gained a hairline outline — unselected ones were rendering as plain text.
+- Verified / working: on device the tile capture logged `tile_capture_ok id=7 capture_ms=35`, stored
+  the row with source "Quick Tile" and scheduled its alarm; the category picker and filters render
+  and persist (screenshots in `build/verification/`). `flutter analyze` 0 · `flutter test` 101/101.
+- Broke / deferred: the first tile dialog was a narrow floating window that truncated its own
+  question mid-sentence ("What do you want to save for"). Fixed with
+  `windowMinWidthMajor/Minor` — a dialog that wraps its prompt reads as broken, and this one is the
+  first thing a tile user sees. The home-screen widget is the last Phase 1 item.
+- Lesson / rule: build native UI at the size it will actually appear. A dialog theme's default width
+  is not the width of a phone, and the difference is only visible in a screenshot.
+- Next: the home-screen widget (PRD §6.1), then enrichment (§5.5).

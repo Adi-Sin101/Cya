@@ -95,7 +95,12 @@ abstract final class AppTheme {
       ),
       chipTheme: ChipThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        side: BorderSide.none,
+        // A hairline outline so an unselected chip still reads as a tappable
+        // control; without it, filter and category chips look like plain text.
+        side: BorderSide(color: scheme.outlineVariant),
+        backgroundColor: scheme.surface,
+        selectedColor: scheme.secondaryContainer,
+        showCheckmark: false,
       ),
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: scheme.surface,

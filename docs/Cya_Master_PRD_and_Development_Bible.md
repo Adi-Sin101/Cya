@@ -426,9 +426,9 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Snooze limit logic | ✅ | 2026-08-31 | Yes | SnoozePolicy (max 3) enforced in SnoozeIntention; detail screen prompts to resolve/archive. |
 | Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. |
 | Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / Open-in-app (stub until deep links) / Snooze + "Why this matters". Deep-linkable route. |
-| Quick Settings Tile | ⬜ | | | |
+| Quick Settings Tile | ✅ | 2026-08-31 | Yes | TileService opens a native dialog capture (clipboard pre-filled), engine-free. Tile capture measured at 35 ms. |
 | Home-screen widget | ⬜ | | | |
-| Categories + FTS search | 🟨 | 2026-08-31 | Partly | FTS5 search live and verified against natively written rows (Dart-owned index, ADR-005). Manual categories stored but no category UI yet. |
+| Categories + FTS search | ✅ | 2026-08-31 | Yes | FTS5 search verified against natively written rows (ADR-005); seven manual categories with a picker on Promise Detail, filter chips on Promises, and an icon on every tile. |
 | Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the full Memory Garden (weekly beds, plant species, streak) are pure projections. Rive reward moments still deferred — see 13.6. |
 | Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
 | Weekly digest | ✅ | 2026-08-31 | Yes | Sunday 18:00 native alarm (self-rescheduling), low-importance notification leading with what was kept, `cya://digest` into a review screen with one-tap resolution. |
@@ -549,6 +549,22 @@ Session 2026-08-31 - Iteration 5 (part 2): the weekly digest
 - Not working / deferred: Rive reward moments still need assets; enrichment is next.
 - Next: enrichment - on-device date extraction (ML Kit) and rule-based auto-categorization, both off
   the capture path (3.2).
+
+Session 2026-08-31 - Iteration 6 (Quick Settings Tile + manual categories)
+- Goal: Close the two remaining Phase 1 items that are not the home-screen widget: a second capture
+  surface (6.1) and manual categories (6.4).
+- Done: CyaTileService + QuickCaptureActivity - a native dialog built in Kotlin (no XML, no Flutter
+  engine) pre-filled from the clipboard, saving through the same one-insert-one-alarm path as every
+  other surface. PromiseCategory (seven fixed categories with stored wire values that enrichment
+  will later write into), a picker on Promise Detail, filter chips on the Promises tab, and a
+  category icon on every promise tile. Chips also gained a hairline outline - unselected ones read
+  as plain text before.
+- Working / verified: tile capture on device logged `tile_capture_ok id=7 capture_ms=35` with the
+  alarm scheduled and the row stored with source "Quick Tile"; the category picker and filters
+  render and persist. 101 tests green.
+- Not working / deferred: the home-screen widget is the last Phase 1 item; Rive reward moments still
+  need assets.
+- Next: the home-screen widget, then enrichment.
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -747,6 +763,8 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 | 2026-08-31 | Weekly digest fires and re-arms | ✅ | `digest_shown kept=1 open=2`, next scheduled for the following Sunday 18:00. |
 | 2026-08-31 | `cya://digest` deep link | ✅ | Cold start into the review screen with Kept / Still waiting sections. |
 | 2026-08-31 | `flutter test` (97 tests) | ✅ 97/97 | +4 digest screen (leads with kept, stalled section, resolve from the review, empty week). |
+| 2026-08-31 | Quick Settings Tile capture | ✅ 35 ms | Native dialog → row stored with source "Quick Tile" + exact alarm scheduled; no Flutter engine. |
+| 2026-08-31 | `flutter test` (101 tests) | ✅ 101/101 | +4 category round-trip, storage and clearing. |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?

@@ -7,10 +7,12 @@ import '../../../core/result.dart';
 import '../../../core/theme/cya_colors_extension.dart';
 import '../../../core/utils/reminder_format.dart';
 import '../../../domain/entities/intention.dart';
+import '../../../domain/enums/promise_category.dart';
 import '../../../domain/policies/snooze_policy.dart';
 import '../../providers/intention_providers.dart';
 import '../home/widgets/promise_tile.dart' show appVisual;
 import '../home/widgets/reminder_chip.dart';
+import 'widgets/category_picker.dart';
 import 'widgets/snooze_sheet.dart';
 import 'widgets/why_this_matters_card.dart';
 
@@ -164,6 +166,13 @@ class _PromiseBody extends ConsumerWidget {
               ),
             ],
           ),
+        ),
+        const SizedBox(height: 20),
+        CategoryPicker(
+          selected: PromiseCategory.fromWire(promise.category),
+          onChanged: (category) => ref
+              .read(manageIntentionProvider)
+              .categorize(promise.id, category?.wire),
         ),
         const SizedBox(height: 20),
         WhyThisMattersCard(promise: promise, now: now),

@@ -7,8 +7,10 @@ import '../../../core/result.dart';
 import '../../../core/router/route_paths.dart';
 import '../../../domain/entities/intention.dart';
 import '../../../domain/enums/intention_status.dart';
+import '../../../domain/enums/promise_category.dart';
 import '../../providers/intention_providers.dart';
 import '../home/widgets/promise_tile.dart';
+import '../promise_detail/widgets/category_picker.dart' show categoryIcon;
 
 /// The full promise list with on-device search and status filters
 /// (PRD §6.4, §8.2).
@@ -33,6 +35,7 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
   final TextEditingController _search = TextEditingController();
   String _query = '';
   _Filter _filter = _Filter.open;
+  PromiseCategory? _category;
 
   @override
   void dispose() {
@@ -88,6 +91,27 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
                     ],
                   ],
                 ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: <Widget>[
+                      for (final category
+                          in PromiseCategory.values) ...<Widget>[
+                        FilterChip(
+                          label: Text(category.label),
+                          avatar: Icon(categoryIcon(category), size: 16),
+                          selected: _category == category,
+                          onSelected: (selected) => setState(
+                            () => _category = selected ? category : null,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -102,6 +126,7 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
                   return _EmptyList(
                     searching: _query.trim().isNotEmpty,
                     filter: _filter,
+                    category: _category,
                   );
                 }
                 return ListView.separated(
@@ -128,11 +153,14 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
     );
   }
 
-  bool _matchesFilter(Intention promise) => switch (_filter) {
-    _Filter.open => promise.status.isPending,
-    _Filter.done => promise.status == IntentionStatus.resolved,
-    _Filter.all => true,
-  };
+  bool _matchesFilter(Intention promise) {
+    if (_category != null && promise.category != _category!.wire) return false;
+    return switch (_filter) {
+      _Filter.open => promise.status.isPending,
+      _Filter.done => promise.status == IntentionStatus.resolved,
+      _Filter.all => true,
+    };
+  }
 
   Future<void> _toggle(int id) async {
     final result = await ref.read(resolveIntentionProvider).toggle(id);
@@ -146,15 +174,26 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
 }
 
 class _EmptyList extends StatelessWidget {
-  const _EmptyList({required this.searching, required this.filter});
+  const _EmptyList({
+    required this.searching,
+    required this.filter,
+    this.category,
+  });
 
   final bool searching;
   final _Filter filter;
+  final PromiseCategory? category;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final (emoji, title, body) = searching
+    final (emoji, title, body) = category != null
+        ? (
+            '🗂️',
+            'Nothing in ${category!.label}',
+            'Promises get a category from their detail screen.',
+          )
+        : searching
         ? ('🔍', 'Nothing matches that', 'Try a different word.')
         : switch (filter) {
             _Filter.done => (
