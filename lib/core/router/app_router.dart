@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../presentation/screens/garden/garden_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
+import '../../presentation/screens/promise_detail/promise_detail_screen.dart';
 import '../../presentation/screens/promises/promises_screen.dart';
 import '../../presentation/shell/home_shell.dart';
 import 'route_paths.dart';
@@ -54,6 +55,13 @@ final goRouterProvider = Provider<GoRouter>((ref) {
             ],
           ),
         ],
+      ),
+      GoRoute(
+        path: RoutePaths.promiseDetailPattern,
+        builder: (context, state) {
+          final id = int.tryParse(state.pathParameters['id'] ?? '');
+          return PromiseDetailScreen(intentionId: id);
+        },
       ),
     ],
   );

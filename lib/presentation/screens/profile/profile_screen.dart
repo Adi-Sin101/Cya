@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/theme/cya_colors_extension.dart';
-import '../../../core/theme/theme_mode_provider.dart';
+import '../../providers/settings_providers.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -61,8 +61,8 @@ class ProfileScreen extends ConsumerWidget {
               value: isDark,
               onChanged: (enabled) {
                 ref
-                    .read(themeModeProvider.notifier)
-                    .set(enabled ? ThemeMode.dark : ThemeMode.light);
+                    .read(settingsControllerProvider)
+                    .setThemeMode(enabled ? ThemeMode.dark : ThemeMode.light);
               },
               secondary: Icon(
                 isDark ? Icons.dark_mode_rounded : Icons.light_mode_rounded,

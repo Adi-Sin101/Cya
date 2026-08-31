@@ -218,3 +218,132 @@ Format for each entry:
   "I'll remember for you." slogan, none clipped.
 - Lesson / rule: To fit square art in a circle without clipping, inset it to the inscribed square
   (≈0.707·diameter) and fill the circle with the art's own background color so the seams vanish.
+
+## 2026-08-31 — Iteration 2: Drift data foundation (the store becomes the source of truth)
+- Plan: plans/iteration-2-drift-data-foundation.md
+- Goal: Finish the half of Phase 0 that was still missing — the local store — *before* the native
+  capture spike, because the Kotlin writer has to match the Drift schema (PRD §7.2).
+- Done:
+  - **Schema v1** (`data/db`): `intentions`, `intention_events`, `preferences`, every column name
+    pinned with `.named(...)` because the native writer will insert into these tables directly.
+    FTS5 index over `raw_content`/`snippet` maintained by **SQL triggers**, so a native capture stays
+    searchable without the Flutter engine ever starting. Hot-path indices on `status`, `reminder_at`,
+    and the event log's `occurred_at`/`intention_id`.
+  - **`IntentionDao`** with the invariant that no mutation happens without its event, in the same
+    transaction: capture / resolve / reopen / snooze / archive / resurface / reschedule / edit /
+    delete. Plus the scheduler's queries (`dueAt`, `nextScheduled`) and a grouped event-count
+    aggregate so XP never streams the whole log.
+  - **Pure domain layer**: `Intention` / `IntentionEvent` entities, `IntentionRepository` interface,
+    use-cases (`CaptureIntention`, `ResolveIntention`, `SnoozeIntention`, `ManageIntention`),
+    `SnoozePolicy` (limit 3 + quiet→banner→digest escalation tiers), and the XP / week-stats / garden
+    projections. `domain/` imports nothing from Flutter and nothing from Drift.
+  - **`Result` / `AppError`** sealed types so commands report failures instead of throwing into the
+    widget tree; `Clock` typedef so every time-dependent rule is testable at any instant.
+  - **Riverpod DI** (`core/di/providers.dart`): database → DAO → repository → use-cases, with the
+    database overridable in tests.
+  - **UI rewired off the mock**: Home is now section-scoped consumers over narrow watches (ticking a
+    promise does not repaint the greeting); real capture sheet with presets + custom date; Promises
+    tab with FTS search and open/done/all filters; Promise Detail with Done / Open-in-app / Snooze,
+    the snooze-limit prompt, and the "Why this matters" mascot card; designed empty states.
+  - Theme preference now **persists** (the `preferences` table), closing the deferred item from the
+    2026-07-08 session.
+  - `docs/native_db_contract.md` — the two-runtime contract: file location, value encodings
+    (DateTime = INTEGER unix **seconds**), table/column names, status + event wire strings, the
+    zero-tap preset rules native must reproduce, and the migration procedure.
+  - Deleted `data/mock/` and the `Promise` presentation model. The mock is gone, not bypassed.
+- Verified / working:
+  - `flutter analyze` — 0 issues. `dart format .` clean.
+  - `flutter test` — **53/53**: preset resolution (incl. DST/month-end and "tonight must stay
+    tonight"), XP/level curve, week stats + garden projections, use-cases including the refused
+    fourth snooze, DAO round-trips against **real SQLite** (FTS matching, trigger sync on delete,
+    today-window semantics, due/next-scheduled), and widget tests driving the app over an in-memory
+    database.
+  - Confirmed on-disk encoding by querying `typeof(captured_at)` → `integer`, value = epoch
+    **seconds** (not millis) — which is what the contract doc now states for the Kotlin writer.
+- Broke / deferred:
+  - **Widget tests hung for 10 minutes** on the first run. Cause: drift schedules a zero-duration
+    `Timer` when a query stream is cancelled, and Riverpod cancels those streams while the tree is
+    torn down at teardown — after the tester can still pump. Fix: unmount the app *inside* the test
+    body (`pumpWidget(SizedBox())` + `pump(Duration.zero)`) so the timers run.
+  - The first toggle test tapped "the last GestureDetector", which was fragile. Fixed properly by
+    giving the completion toggle a stable `ValueKey('promise-toggle-<id>')` — better for
+    accessibility tooling too.
+  - `flutter test` output piped through `tail` shows nothing until the process exits — a hung run
+    looks identical to a silent one. Use `--reporter expanded` without a pipe when diagnosing.
+  - Still open: no notifications/alarms; "Open in <app>" is honest-but-stubbed until deep links
+    arrive with the native path; Garden and Achievements are placeholders; the day boundary is read
+    once when the provider builds, so an app left open across midnight will not roll over.
+- Lesson / rule:
+  - Build the **store before the native capture path**, not after: the schema is a contract between
+    two runtimes, and it is far cheaper to pin column names and value encodings while there is only
+    one writer.
+  - Keep the FTS index in **SQL triggers**, never in Dart. Anything the native path must not depend
+    on the Flutter engine for belongs in the database itself.
+  - `sqlite3` 3.x builds via Dart build hooks, so real SQLite (with FTS5) is available in
+    `flutter test` on Windows — DAO tests can be genuine integration tests instead of mocks. Prefer
+    a real in-memory database to a hand-written fake.
+- Next: Phase 0's remaining piece — the native-thin capture spike (Share Sheet → Kotlin SQLite insert
+  → `AlarmManager` default reminder → notification → one-tap return), instrumented for the < 2s
+  budget.
+
+## 2026-08-31 — Iteration 3: the native-thin capture path (Phase 0's two-second spike)
+- Plan: plans/iteration-3-native-thin-capture.md
+- Goal: Share Sheet → Kotlin → direct SQLite write, no Flutter engine, inside the < 2s budget
+  (PRD §3.1, §5.4, §10 Phase 0 acceptance).
+- Done:
+  - **`CaptureActivity`** — exported, translucent, `Theme.Translucent.NoTitleBar`, `noHistory`,
+    `excludeFromRecents`. Inflates no layout, starts no engine, loads no plugin. Reads
+    `ACTION_SEND` / `ACTION_PROCESS_TEXT`, attributes the source app from the caller's package
+    label, extracts the first URL as the return-to-source `deep_link`, toasts, finishes.
+  - **`CaptureWriter`** — `SQLiteDatabase.openOrCreateDatabase` on the shared file, one transaction
+    inserting the row *and* its `captured` event, `capture_ms` measured from
+    `SystemClock.elapsedRealtime()` at `onCreate` and stored in the event metadata (so §11 capture
+    speed is a fact in the log, not a guess) plus one tagged Logcat line for scripted assertions.
+  - **`CyaDatabaseContract`** — the native half of the schema contract: the shared DDL, the
+    `user_version` stamp, and Kotlin twins of the status/event wire strings. A share can land before
+    the app has ever been opened, so whichever runtime gets there first creates the file.
+  - **`ReminderDefaults`** — the Tonight / Tomorrow / Weekend rules ported from `ReminderPreset`, on
+    `Calendar` so the capture path needs no desugaring.
+  - **`test/data/native_contract_test.dart`** — keeps a copy of the native DDL, builds a database
+    with it, and asserts Drift opens it without migrating, reads the rows with the right encodings,
+    finds them via search, and can resolve them. Also asserts the native DDL contains no `fts`.
+- Verified / working (emulator API 34, `pm clear` before the cold run):
+  - **Cold process, database did not exist: `am start -W` total 762 ms**, of which `capture_ms=172`
+    was the write *including creating the schema*. Budget is < 2000 ms, target < 1000 ms (§9.2).
+  - **Warm process, 5 runs: 117 ms median** (`159, 117, 125, 105, 107`), writes 10–18 ms.
+  - On-device `sqlite3` dump: `user_version=1`; `captured_at`/`reminder_at` in epoch **seconds**;
+    `reminder_at` = tonight 20:00; `deep_link` extracted from the shared URL; one `captured` event
+    per row carrying `{"surface":"share_sheet","capture_ms":…}`.
+  - The Flutter app then opened that **native-created** file with no migration, listed all six
+    promises with the right source and "Tonight" chip, projected **60 XP** (6 captures × 10) from
+    events Dart never wrote, and FTS search for "paper" found a natively written promise.
+  - `flutter analyze` 0 · `flutter test` 58/58 · debug APK builds.
+- Broke / deferred:
+  - **The first on-device run failed outright: `no such module: fts5`.** Android's system SQLite is
+    built without FTS5, and iteration 2 had the search index maintained by triggers on `intentions`
+    — so *every* native insert failed. Redesigned as ADR-005: the native path knows nothing about
+    search; Drift owns the index and reconciles it from a watermark.
+  - While fixing that, a second trap: reconciling by comparing `COUNT(*)` of `intentions` and
+    `intentions_fts` never detects staleness, because an external-content FTS5 table reads its
+    values *from* the content table, so the counts always agree. Replaced with an explicit
+    "indexed through id" watermark in `preferences`.
+  - `source_app` reads "Shell" when the share comes from adb — correct behaviour, and a real app
+    supplies its own label.
+  - Reminder *firing* is not in this iteration by design: the spike proves capture, and `reminder_at`
+    is stored correctly for iteration 4 to schedule.
+  - Android's `SQLiteDatabase` silently adds an `android_metadata` table to the file. Harmless —
+    Drift ignores tables it does not know about.
+- Lesson / rule:
+  - **A shared database may only use SQL features that *both* SQLite builds have.** Dart bundles its
+    own SQLite (FTS5 on); Android's system SQLite does not. Anything richer belongs to the side that
+    bundles its own engine, as a derived artifact it maintains itself.
+  - **Green tests on one runtime prove nothing about the other.** All 53 Dart tests passed while the
+    native path was broken on every device. A two-runtime feature is not done until it has run on a
+    device.
+  - Windows/PowerShell: `adb exec-out … > file` corrupts binaries (BOM + text encoding). Use
+    `adb shell "… > /sdcard/x"` then `adb pull`. Same for `screencap`.
+  - `adb shell am start … --es …` needs *device-side* quoting: without inner quotes the device shell
+    splits the extra and `am` swallows the fragments as flags.
+- Next: iteration 4 — AlarmManager scheduling, notification channels mapped to the escalation tiers,
+  one-tap resolution from the notification (native write, no engine), boot rescheduling, and the
+  `cya://promise/<id>` deep link into promise detail.

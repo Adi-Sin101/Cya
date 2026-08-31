@@ -5,6 +5,28 @@
         android:roundIcon="@mipmap/ic_launcher_round">
         <!-- Native, pre-Flutter animated splash. This is the launcher; it plays
              the intro video then hands off to MainActivity (PRD §5.2). -->
+        <!-- Native-thin capture (PRD 5.4): an exported, translucent, engine-free
+             activity that writes the capture straight to the shared SQLite file
+             and dismisses. Nothing may be added to this path. -->
+        <activity
+            android:name=".capture.CaptureActivity"
+            android:exported="true"
+            android:theme="@style/CaptureTheme"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:label="Cya!">
+            <intent-filter android:label="Save to Cya!">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+            <intent-filter android:label="Save to Cya!">
+                <action android:name="android.intent.action.PROCESS_TEXT"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
+            </intent-filter>
+        </activity>
         <activity
             android:name=".SplashActivity"
             android:exported="false"

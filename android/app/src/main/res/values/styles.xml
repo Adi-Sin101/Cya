@@ -24,4 +24,13 @@
         <item name="android:windowContentOverlay">@null</item>
         <item name="android:windowAnimationStyle">@null</item>
     </style>
+    <!-- The Share Sheet capture surface: no window, no layout, no visible
+         transition. The activity writes one row and finishes, so the user is
+         back in the sharing app immediately (PRD 5.4). -->
+    <style name="CaptureTheme" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowNoDisplay">false</item>
+    </style>
 </resources>

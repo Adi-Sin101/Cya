@@ -418,22 +418,22 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 |---|---|---|---|---|
 | Project scaffold & layering | ✅ | 2026-07-08 | Yes | core/domain/data/presentation layering in place (Iteration 1). |
 | Theming (light/dark, Plus Jakarta Sans) | ✅ | 2026-07-08 | Yes | M3 light+dark from §8.1; PJS bundled. Dark Surface2 #243137 pending confirm. |
-| Drift DB + schema + migrations | ⬜ | | | Home currently reads a mock repository. |
-| Native-thin capture (Share Sheet) | ⬜ | | | Must not boot Flutter engine. |
+| Drift DB + schema + migrations | ✅ | 2026-08-31 | Yes | v1: intentions + intention_events + preferences + FTS5 (trigger-maintained) + hot-path indices. Contract in docs/native_db_contract.md. |
+| Native-thin capture (Share Sheet) | ✅ | 2026-08-31 | Yes | Kotlin CaptureActivity → direct SQLite write, no Flutter engine. Cold fresh-install 762 ms total / 172 ms write; warm 117 ms median. |
 | Native animated splash (video) | ✅ | 2026-07-08 | Yes | Iteration 1: SplashActivity plays mp4 pre-engine; flash-free handoff. Not a PRD-mandated module — supports §5.2/§9.1. |
-| Native alarm scheduler | ⬜ | | | Exact alarms + Doze handling. |
-| Local notifications + escalation | ⬜ | | | |
-| Snooze limit logic | ⬜ | | | Enforce in domain layer. |
-| Home screen | ⬜ | | | |
-| Promise detail / resurface | ⬜ | | | |
+| Native alarm scheduler | ⬜ | | | Exact alarms + Doze handling. dueAt/nextScheduled queries ready. |
+| Local notifications + escalation | 🟨 | 2026-08-31 | Partly | Escalation tiers + snooze limit exist as domain policy; no notification layer yet. |
+| Snooze limit logic | ✅ | 2026-08-31 | Yes | SnoozePolicy (max 3) enforced in SnoozeIntention; detail screen prompts to resolve/archive. |
+| Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. |
+| Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / Open-in-app (stub until deep links) / Snooze + "Why this matters". Deep-linkable route. |
 | Quick Settings Tile | ⬜ | | | |
 | Home-screen widget | ⬜ | | | |
-| Categories + FTS search | ⬜ | | | |
-| Gamification (XP/levels/garden) | ⬜ | | | Event-log projection. |
+| Categories + FTS search | 🟨 | 2026-08-31 | Partly | FTS5 search live and verified against natively written rows (Dart-owned index, ADR-005). Manual categories stored but no category UI yet. |
+| Gamification (XP/levels/garden) | 🟨 | 2026-08-31 | Partly | XP/level/week/garden are pure projections over the log (ADR-002). Rive reward animations still to come. |
 | Achievements | ⬜ | | | |
 | Weekly digest | ⬜ | | | |
 | Enrichment (date extraction) | ⬜ | | | Fast-follow. |
-| Metrics instrumentation | ⬜ | | | Capture speed logged from Phase 0. |
+| Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` now recorded in every `captured` event + Logcat. Remaining §11 metrics derive from the log; no in-app reporting surface yet. |
 
 ### 13.2 Current session log
 ```
@@ -450,7 +450,46 @@ Session 2026-07-08 — Iteration 1 (foundation: theme, font, native video splash
   tests 2/2, debug APK builds on AGP 9.0.1 / Gradle 9.1 / Kotlin 2.3.20.
 - Not working / deferred: applicationId still com.example.cya (rename before release); dark
   Surface2 #243137 to confirm; Home data is mock (Drift lands later).
-- Next: Phase 0 native-thin capture spike (Share Sheet → shared SQLite → AlarmManager) per §10.
+- Next: Phase 0 native-thin capture spike (Share Sheet -> shared SQLite -> AlarmManager) per 10.
+
+Session 2026-08-31 - Iteration 2 (Drift data foundation: the store becomes the source of truth)
+- Goal: Finish the second half of Phase 0 - the local store - before the native capture spike, since
+  the native writer must match the Drift schema (7.2).
+- Done: Drift v1 schema (intentions, intention_events, preferences) with explicitly pinned column
+  names + FTS5 index maintained by SQL triggers; IntentionDao where every mutation writes its event
+  in the same transaction; pure domain layer (entities, repository interface, use-cases,
+  SnoozePolicy, XP/week/garden projections); Riverpod DI graph; Home/Promises/Detail rewired off the
+  mock onto narrow reactive watches; real in-app capture sheet; persisted theme preference;
+  docs/native_db_contract.md.
+- Working / verified: analyze 0 issues; 53 tests green (preset rules, projections, use-cases
+  including the snooze limit, DAO round-trips against real SQLite, widget tests over an in-memory
+  store).
+- Not working / deferred: no notifications or alarms yet; "Open in <app>" is a stub until deep links
+  arrive with the native path; Garden + Achievements screens are still placeholders; the day boundary
+  is captured at provider build (no midnight rollover while the app is open).
+- Next: Phase 0 native-thin capture spike (Share Sheet -> shared SQLite -> AlarmManager).
+
+Session 2026-08-31 - Iteration 3 (native-thin capture: Phase 0's two-second spike)
+- Goal: Share Sheet -> Kotlin -> direct SQLite write, with no Flutter engine, inside the < 2s budget.
+- Done: CaptureActivity (translucent, no layout, no engine) + CaptureWriter (one transaction: row +
+  captured event) + CyaDatabaseContract (native half of the schema contract, creates the file and
+  stamps user_version when a share lands before the app has ever run) + ReminderDefaults (the
+  zero-tap Tonight rule, ported from ReminderPreset). capture_ms is written into the event metadata
+  and to Logcat.
+- Working / verified on emulator (API 34), fresh install via `pm clear`:
+  - Cold process, database did not exist: `am start -W` total 762 ms, of which 172 ms was the write
+    (including creating the schema). Warm: 117 ms median over 5 runs, 10-18 ms per write.
+  - On-device SQLite dump: user_version=1, epoch SECONDS, reminder_at = tonight 20:00, deep_link
+    extracted from the shared URL, one captured event each with capture_ms.
+  - The Flutter app then opened that native-created file with no migration, showed all six promises,
+    projected 60 XP (6 captures x 10) from natively written events, and FTS search found a natively
+    written promise by content.
+- Broke / deferred: first run failed with `no such module: fts5` - Android's system SQLite has no
+  FTS5, so the trigger-maintained index made every native insert fail. Redesigned (ADR-005): the
+  index is Dart-owned and reconciled from a watermark. Reminder firing (alarms + notifications) is
+  iteration 4; source_app shows the caller's label ("Shell" over adb).
+- Next: iteration 4 - AlarmManager, notification channels by escalation tier, one-tap resolution
+  from the notification, boot rescheduling, deep link into promise detail.
 ```
 
 ### 13.3 Decision log (ADR-lite)
@@ -487,13 +526,93 @@ Consequences: Splash is Android-only (iOS needs its own approach in fast-follow)
   deep-links/capture).
 ```
 
+
+```
+[ADR-002] Event-log projections, XP weights and the level curve
+Date: 2026-08-31
+Context: 6.6 requires gamification to be a projection over the event log, and 13.6 left the XP
+  weights and level curve open. Storing counters would make progress corruptible and unrepairable.
+Decision: Nothing derived is stored. XP = 10 per capture, 25 per resolution (resolution weighs more
+  because the product's failure mode is becoming a second backlog, 12). Advancing from level N costs
+  250 x N XP, which puts level 12 in the 3,000 XP band shown in the approved mockup. Titles are
+  garden-themed (Seedling, Sprout, Gardener, Memory Keeper, Future Builder, Promise Master, Legend).
+  Week stats and garden growth are recomputed from this week's events.
+Consequences: Progress is recomputable and tamper-resistant, and a logic change can be replayed.
+  Cost: projections re-run on every event change - kept cheap by projecting XP from a grouped COUNT
+  aggregate and stats from this week's rows only.
+```
+
+```
+[ADR-003] Hand-written immutable domain entities instead of freezed
+Date: 2026-08-31
+Context: 4.2 lists freezed + json_serializable for immutable models. Drift's generator already emits
+  immutable row classes with copyWith/equality, and the domain entities are few and small.
+Decision: Diverge for now. domain/ uses hand-written immutable classes with const constructors,
+  explicit copyWith and value equality; Drift's generated classes cover the data layer. freezed gets
+  added when unions (sealed state machines) or JSON serialization actually earn it - encrypted sync
+  (5.7) is the likely trigger.
+Consequences: One codegen pipeline (build_runner + drift_dev) instead of two, and less generated code
+  to compile. Risk: hand-written equality/copyWith can fall out of step with the fields - mitigated
+  by keeping entities small and covered by the DAO round-trip tests. This is a LOGGED divergence
+  from 4.2, not a silent one.
+```
+
+```
+[ADR-004] One SQLite file at getApplicationSupportDirectory()/cya.db, with a written native contract
+Date: 2026-08-31
+Context: 5.2/5.4 require the Kotlin capture path to open the same database Drift uses, and 3.3
+  requires a single local source of truth.
+Decision: One file, cya.db, in application support (app-private storage reachable from Kotlin).
+  Column names are pinned with .named(...) rather than left to the generator; status and event types
+  are stored as documented wire strings; DateTime columns use Drift's default INTEGER unix SECONDS.
+  The FTS index is maintained by SQL triggers so a native insert stays searchable with no Dart
+  running. Device settings (theme, display name) live in a preferences table in the same file rather
+  than a second preferences mechanism. All of it is written down in docs/native_db_contract.md,
+  which any schema change must update.
+Consequences: The native writer can be a plain SQLite insert with no Flutter dependency. Cost: two
+  runtimes now share a migration contract - every schema change is a two-sided change plus a doc
+  update.
+```
+
+
+```
+[ADR-005] The FTS5 search index is Dart-owned, not database-owned
+Date: 2026-08-31
+Context: Iteration 2 kept the search index in sync with SQL triggers so that natively written
+  captures would stay searchable without the Flutter engine. The first on-device run of the native
+  capture path failed outright: `no such module: fts5`. Android's system SQLite - the one a plain
+  Kotlin SQLiteDatabase uses - is built without FTS5 (verified on API 34 / Android 14), while the
+  Dart side bundles its own SQLite with FTS5 enabled. Any trigger referencing an fts5 table makes
+  every native INSERT fail, which would silently break the product's core promise.
+Decision: The native path knows nothing about search. It creates and writes only intentions,
+  intention_events and preferences. Drift creates the fts5 table on open and catches it up using a
+  watermark (`preferences['fts_indexed_through_id']` = highest indexed intention id), rebuilding
+  after edits and deletions. Search reconciles before querying, so rows captured natively while the
+  app was open or closed are always found.
+  Rejected: bundling a second SQLite build into the Android side (adds a native library and a second
+  SQLite version writing the same file, for a feature only used inside the app); FTS4 (available in
+  Android's SQLite but a downgrade the PRD did not ask for).
+Consequences: The capture path stays dependency-free and as thin as it can be, which is the point
+  (3.1/5.4). Search results for a native capture are up to date from the next app open or search -
+  unobservable, since search only exists inside the app. Trap recorded: do NOT reconcile by comparing
+  COUNT(*) of the two tables - an external-content fts5 table reads its values from the content
+  table, so the counts always agree even when nothing is indexed.
+```
+
 ### 13.4 Mistakes & lessons learned
 ```
-[L-001]
-What broke / went wrong:
-Why:
-Fix:
-Lesson / rule to remember going forward:
+[L-001] The shared database is only as portable as the weakest SQLite that opens it
+What broke / went wrong: The first on-device native capture failed with `no such module: fts5`, so
+  nothing was saved. Every Dart test had passed, because Dart bundles its own SQLite.
+Why: The schema was designed against Drift's SQLite build (FTS5 enabled) and assumed the Kotlin side
+  would behave the same. Android's system SQLite has no FTS5, and the FTS triggers ran inside the
+  native INSERT.
+Fix: ADR-005 - the search index is Dart-owned; the native DDL contains no FTS at all, and a test
+  asserts that (`the native path never needs the fts5 module`).
+Lesson / rule to remember going forward: When two runtimes share a database file, the schema may
+  only use features BOTH SQLite builds have. Anything richer belongs to whichever side bundles its
+  own engine, as a derived artifact it maintains itself. Green tests on one runtime prove nothing
+  about the other - the two-runtime path needs a device run before it can be called done.
 ```
 
 ### 13.5 Test & verification log
@@ -506,11 +625,21 @@ Lesson / rule to remember going forward:
 | 2026-07-08 | Reactive toggle updates Today ring | ✅ | 1/4 → 2/4 on tap. |
 | 2026-07-08 | Dark mode render | ✅ | M3 dark + values-night warm-up. |
 | 2026-07-08 | Reduced-motion (animator scale 0) skips video | ✅ | Fast handoff, no video. |
+| 2026-08-31 | `flutter analyze` | ✅ 0 issues | Iteration 2. |
+| 2026-08-31 | `flutter test` (53 tests) | ✅ 53/53 | Preset rules, XP/week/garden projections, use-cases + snooze limit, DAO round-trips on real SQLite, widget tests over an in-memory store. |
+| 2026-08-31 | FTS5 availability + trigger sync | ✅ | Captured rows are searchable immediately; deleting one removes it from the index. |
+| 2026-08-31 | Event-log invariant (mutation implies event, same txn) | ✅ | Asserted per transition in test/data/intention_dao_test.dart. |
+| 2026-08-31 | Native Share Sheet capture, cold process, fresh install (API 34) | ✅ 762 ms | `am start -W` total; `capture_ms=172` for the write incl. schema creation. Budget is < 2000 ms (§9.2). |
+| 2026-08-31 | Native capture, warm process x5 | ✅ 117 ms median | Writes 10-18 ms. |
+| 2026-08-31 | Native-created database opened by Drift | ✅ | user_version=1, no migration, all six rows read; XP projected 60 from native events. |
+| 2026-08-31 | FTS search over a natively written row | ✅ | "paper" matched a promise Dart never wrote (index reconciled from the watermark). |
+| 2026-08-31 | On-device value encodings | ✅ | captured_at/reminder_at are epoch SECONDS; reminder = tonight 20:00; deep_link extracted from the shared URL. |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?
 - Confirm exact dark-mode Surface 2 hex from the palette file.
-- Exact XP weights for capture vs resolution; level curve.
+- Should the day boundary roll over live while the app is open (midnight timer), or is a resume-time refresh enough?
+- ~~Exact XP weights for capture vs resolution; level curve.~~ Decided in ADR-002.
 - Digest timing/frequency defaults.
 
 ---

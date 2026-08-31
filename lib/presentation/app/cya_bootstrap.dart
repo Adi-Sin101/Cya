@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/di/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/theme/theme_mode_provider.dart';
+import '../providers/settings_providers.dart';
 import 'cya_app.dart';
 import 'splash_sprite_animation.dart';
 
@@ -24,6 +25,8 @@ class _CyaBootstrapState extends ConsumerState<CyaBootstrap> {
 
   @override
   Widget build(BuildContext context) {
+    // Startup work runs behind the splash rather than in front of the user.
+    ref.watch(appStartupProvider);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,

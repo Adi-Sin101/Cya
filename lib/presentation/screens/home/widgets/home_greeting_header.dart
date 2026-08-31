@@ -7,21 +7,26 @@ import 'level_badge.dart';
 class HomeGreetingHeader extends StatelessWidget {
   const HomeGreetingHeader({
     super.key,
-    required this.userName,
     required this.level,
+    required this.now,
+    this.userName,
   });
 
-  final String userName;
+  /// `null` until the user tells Cya! their name — the greeting still works.
+  final String? userName;
   final UserLevel level;
+  final DateTime now;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final name = userName?.trim();
+    final greeting = _greeting(now.hour);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          '${_greeting()}, $userName 👋',
+          name == null || name.isEmpty ? '$greeting 👋' : '$greeting, $name 👋',
           style: theme.textTheme.headlineMedium,
         ),
         const SizedBox(height: 4),
@@ -36,8 +41,7 @@ class HomeGreetingHeader extends StatelessWidget {
   }
 }
 
-String _greeting() {
-  final hour = DateTime.now().hour;
+String _greeting(int hour) {
   if (hour < 12) return 'Good Morning';
   if (hour < 17) return 'Good Afternoon';
   return 'Good Evening';
