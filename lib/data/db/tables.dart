@@ -13,6 +13,15 @@ class Intentions extends Table {
 
   IntColumn get id => integer().autoIncrement()();
   TextColumn get sourceApp => text().named('source_app')();
+
+  /// The Android package the promise was shared from, e.g.
+  /// `com.whatsapp`. Nullable: an in-app capture has no source package, and a
+  /// share whose sender cannot be attributed has none either.
+  ///
+  /// Stored so the UI can show the *real* launcher icon of the app a promise
+  /// came from rather than an approximation — recognising WhatsApp's own icon
+  /// in a list is instant in a way that a generic speech bubble never is.
+  TextColumn get sourcePackage => text().named('source_package').nullable()();
   TextColumn get rawContent => text().named('raw_content')();
   TextColumn get snippet => text().named('snippet').nullable()();
   TextColumn get deepLink => text().named('deep_link').nullable()();

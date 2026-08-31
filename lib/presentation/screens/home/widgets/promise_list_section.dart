@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/cya_colors_extension.dart';
 import '../../../../domain/entities/intention.dart';
+import '../../../widgets/motion/entrance.dart';
 import 'promise_tile.dart';
 
 /// "Today's Promises" header + the list of promise tiles (PRD §8.2).
@@ -29,33 +32,38 @@ class PromiseListSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
-            Text("Today's Promises", style: theme.textTheme.titleLarge),
-            if (onSeeAll != null)
+            Text("Today's promises", style: theme.textTheme.titleLarge),
+            if (onSeeAll != null && promises.isNotEmpty)
               TextButton(
                 onPressed: onSeeAll,
-                child: Text(
-                  'See all',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.primary,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
                   ),
                 ),
+                child: const Text('See all'),
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
         if (promises.isEmpty)
           const _TodayEmptyState()
         else
-          for (var i = 0; i < promises.length; i++) ...<Widget>[
-            if (i > 0) const SizedBox(height: 10),
-            PromiseTile(
-              key: ValueKey<int>(promises[i].id),
-              promise: promises[i],
-              now: now,
-              onToggle: () => onToggle(promises[i].id),
-              onTap: onOpen == null ? null : () => onOpen!(promises[i].id),
-            ),
-          ],
+          // Rows arrive top-down. The stagger is what turns "the list
+          // appeared" into "the list was dealt out".
+          ...Entrance.staggered(<Widget>[
+            for (var i = 0; i < promises.length; i++)
+              Padding(
+                padding: EdgeInsets.only(top: i == 0 ? 0 : AppSpacing.md),
+                child: PromiseTile(
+                  key: ValueKey<int>(promises[i].id),
+                  promise: promises[i],
+                  now: now,
+                  onToggle: () => onToggle(promises[i].id),
+                  onTap: onOpen == null ? null : () => onOpen!(promises[i].id),
+                ),
+              ),
+          ]),
       ],
     );
   }
@@ -71,25 +79,30 @@ class _TodayEmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.xxl + 4,
+        horizontal: AppSpacing.xl,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Column(
         children: <Widget>[
-          const Text('🦫', style: TextStyle(fontSize: 34)),
-          const SizedBox(height: 10),
+          const Text('🦫', style: TextStyle(fontSize: 40)),
+          const SizedBox(height: AppSpacing.md),
           Text(
             'Nothing due today',
             style: theme.textTheme.titleMedium,
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs + 2),
           Text(
             "Share something to Cya! and I'll bring it back when it matters.",
-            style: theme.textTheme.bodySmall,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: context.cyaColors.textSecondary,
+            ),
             textAlign: TextAlign.center,
           ),
         ],

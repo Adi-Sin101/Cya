@@ -5,6 +5,7 @@ import '../../core/di/providers.dart';
 import '../../core/router/app_router.dart';
 import '../../core/router/route_paths.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/system_chrome.dart';
 import '../providers/reminder_providers.dart';
 import '../providers/settings_providers.dart';
 
@@ -69,6 +70,10 @@ class _CyaAppState extends ConsumerState<CyaApp> with WidgetsBindingObserver {
       darkTheme: AppTheme.dark,
       themeMode: ref.watch(themeModeProvider),
       routerConfig: ref.watch(goRouterProvider),
+      // Clamps the OS text scale to a range these layouts survive, and keeps
+      // the system bar icons matched to the resolved theme (PRD §8.4).
+      builder: (context, child) =>
+          SystemChromeSync(child: AppTheme.wrapMediaQuery(context, child)),
     );
   }
 }

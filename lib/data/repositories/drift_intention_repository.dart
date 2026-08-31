@@ -113,5 +113,22 @@ class DriftIntentionRepository implements IntentionRepository {
   }) => _dao.updateContent(id, rawContent, at);
 
   @override
+  Future<List<Intention>> needingEnrichment({int limit = 60}) =>
+      _dao.needingEnrichment(limit: limit);
+
+  @override
+  Future<void> recordExtractedDeadline(
+    int id, {
+    required DateTime deadline,
+    required DateTime? reminderAt,
+    required DateTime at,
+  }) => _dao.recordExtractedDeadline(
+    id,
+    deadline: deadline,
+    reminderAt: reminderAt,
+    at: at,
+  );
+
+  @override
   Future<void> deleteIntention(int id) => _dao.deleteIntention(id);
 }

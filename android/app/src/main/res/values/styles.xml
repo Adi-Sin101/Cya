@@ -15,15 +15,6 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">@color/app_background</item>
     </style>
-    <!-- Fullscreen theme for the native video SplashActivity. The window
-         background is the still first frame, so nothing white/black is shown
-         before the video's first decoded frame renders (PRD §5.2 flash-free). -->
-    <style name="SplashTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">@color/brand_splash</item>
-        <item name="android:windowFullscreen">true</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowAnimationStyle">@null</item>
-    </style>
     <!-- The Share Sheet capture surface: no window, no layout, no visible
          transition. The activity writes one row and finishes, so the user is
          back in the sharing app immediately (PRD 5.4). -->

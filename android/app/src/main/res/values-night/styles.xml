@@ -15,10 +15,4 @@
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/app_background</item>
     </style>
-    <style name="SplashTheme" parent="@android:style/Theme.Black.NoTitleBar">
-        <item name="android:windowBackground">@color/brand_splash</item>
-        <item name="android:windowFullscreen">true</item>
-        <item name="android:windowContentOverlay">@null</item>
-        <item name="android:windowAnimationStyle">@null</item>
-    </style>
 </resources>

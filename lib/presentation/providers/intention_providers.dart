@@ -11,6 +11,7 @@ import '../../domain/projections/achievement_projection.dart';
 import '../../domain/projections/garden_projection.dart';
 import '../../domain/projections/week_projection.dart';
 import '../../domain/projections/xp_projection.dart';
+import 'today_provider.dart';
 
 /// Reactive views over the local store (PRD §3.3).
 ///
@@ -18,15 +19,19 @@ import '../../domain/projections/xp_projection.dart';
 /// a write only rebuilds the sections it actually affects (PRD §9.1).
 
 /// Today's Promises — due by end of today, plus what was resolved today.
+///
+/// The day boundary comes from [todayProvider], not from a one-off read of the
+/// clock, so an app left open across midnight rolls over on its own instead of
+/// showing yesterday until something else forces a rebuild.
 final todayIntentionsProvider = StreamProvider.autoDispose<List<Intention>>((
   ref,
 ) {
-  final now = ref.watch(clockProvider)();
+  final dayStart = ref.watch(todayProvider);
   return ref
       .watch(intentionRepositoryProvider)
       .watchToday(
-        dayStart: WeekProjection.startOfDay(now),
-        dayEnd: WeekProjection.endOfDay(now),
+        dayStart: dayStart,
+        dayEnd: WeekProjection.endOfDay(dayStart),
       );
 });
 

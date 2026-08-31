@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/di/providers.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/system_chrome.dart';
 import '../providers/settings_providers.dart';
 import 'cya_app.dart';
 import 'splash_sprite_animation.dart';
@@ -27,6 +28,10 @@ class _CyaBootstrapState extends ConsumerState<CyaBootstrap> {
   Widget build(BuildContext context) {
     // Startup work runs behind the splash rather than in front of the user.
     ref.watch(appStartupProvider);
+    // Enrichment of anything captured while the app was closed (PRD §5.5).
+    // Watched, not awaited: the UI must never wait on it, and it must never
+    // touch the capture path (§3.2).
+    ref.watch(enrichmentPassProvider);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,
@@ -40,6 +45,9 @@ class _CyaBootstrapState extends ConsumerState<CyaBootstrap> {
               theme: AppTheme.light,
               darkTheme: AppTheme.dark,
               themeMode: ref.watch(themeModeProvider),
+              builder: (context, child) => SystemChromeSync(
+                child: AppTheme.wrapMediaQuery(context, child),
+              ),
               home: _SplashView(onSkip: _finishSplash),
             ),
     );

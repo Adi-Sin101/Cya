@@ -33,6 +33,17 @@ class $IntentionsTable extends Intentions
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _sourcePackageMeta = const VerificationMeta(
+    'sourcePackage',
+  );
+  @override
+  late final GeneratedColumn<String> sourcePackage = GeneratedColumn<String>(
+    'source_package',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _rawContentMeta = const VerificationMeta(
     'rawContent',
   );
@@ -148,6 +159,7 @@ class $IntentionsTable extends Intentions
   List<GeneratedColumn> get $columns => [
     id,
     sourceApp,
+    sourcePackage,
     rawContent,
     snippet,
     deepLink,
@@ -181,6 +193,15 @@ class $IntentionsTable extends Intentions
       );
     } else if (isInserting) {
       context.missing(_sourceAppMeta);
+    }
+    if (data.containsKey('source_package')) {
+      context.handle(
+        _sourcePackageMeta,
+        sourcePackage.isAcceptableOrUnknown(
+          data['source_package']!,
+          _sourcePackageMeta,
+        ),
+      );
     }
     if (data.containsKey('raw_content')) {
       context.handle(
@@ -271,6 +292,10 @@ class $IntentionsTable extends Intentions
         DriftSqlType.string,
         data['${effectivePrefix}source_app'],
       )!,
+      sourcePackage: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_package'],
+      ),
       rawContent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}raw_content'],
@@ -323,6 +348,15 @@ class $IntentionsTable extends Intentions
 class IntentionRow extends DataClass implements Insertable<IntentionRow> {
   final int id;
   final String sourceApp;
+
+  /// The Android package the promise was shared from, e.g.
+  /// `com.whatsapp`. Nullable: an in-app capture has no source package, and a
+  /// share whose sender cannot be attributed has none either.
+  ///
+  /// Stored so the UI can show the *real* launcher icon of the app a promise
+  /// came from rather than an approximation — recognising WhatsApp's own icon
+  /// in a list is instant in a way that a generic speech bubble never is.
+  final String? sourcePackage;
   final String rawContent;
   final String? snippet;
   final String? deepLink;
@@ -336,6 +370,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
   const IntentionRow({
     required this.id,
     required this.sourceApp,
+    this.sourcePackage,
     required this.rawContent,
     this.snippet,
     this.deepLink,
@@ -352,6 +387,9 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['source_app'] = Variable<String>(sourceApp);
+    if (!nullToAbsent || sourcePackage != null) {
+      map['source_package'] = Variable<String>(sourcePackage);
+    }
     map['raw_content'] = Variable<String>(rawContent);
     if (!nullToAbsent || snippet != null) {
       map['snippet'] = Variable<String>(snippet);
@@ -379,6 +417,9 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     return IntentionsCompanion(
       id: Value(id),
       sourceApp: Value(sourceApp),
+      sourcePackage: sourcePackage == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourcePackage),
       rawContent: Value(rawContent),
       snippet: snippet == null && nullToAbsent
           ? const Value.absent()
@@ -410,6 +451,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     return IntentionRow(
       id: serializer.fromJson<int>(json['id']),
       sourceApp: serializer.fromJson<String>(json['sourceApp']),
+      sourcePackage: serializer.fromJson<String?>(json['sourcePackage']),
       rawContent: serializer.fromJson<String>(json['rawContent']),
       snippet: serializer.fromJson<String?>(json['snippet']),
       deepLink: serializer.fromJson<String?>(json['deepLink']),
@@ -430,6 +472,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'sourceApp': serializer.toJson<String>(sourceApp),
+      'sourcePackage': serializer.toJson<String?>(sourcePackage),
       'rawContent': serializer.toJson<String>(rawContent),
       'snippet': serializer.toJson<String?>(snippet),
       'deepLink': serializer.toJson<String?>(deepLink),
@@ -446,6 +489,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
   IntentionRow copyWith({
     int? id,
     String? sourceApp,
+    Value<String?> sourcePackage = const Value.absent(),
     String? rawContent,
     Value<String?> snippet = const Value.absent(),
     Value<String?> deepLink = const Value.absent(),
@@ -459,6 +503,9 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
   }) => IntentionRow(
     id: id ?? this.id,
     sourceApp: sourceApp ?? this.sourceApp,
+    sourcePackage: sourcePackage.present
+        ? sourcePackage.value
+        : this.sourcePackage,
     rawContent: rawContent ?? this.rawContent,
     snippet: snippet.present ? snippet.value : this.snippet,
     deepLink: deepLink.present ? deepLink.value : this.deepLink,
@@ -476,6 +523,9 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     return IntentionRow(
       id: data.id.present ? data.id.value : this.id,
       sourceApp: data.sourceApp.present ? data.sourceApp.value : this.sourceApp,
+      sourcePackage: data.sourcePackage.present
+          ? data.sourcePackage.value
+          : this.sourcePackage,
       rawContent: data.rawContent.present
           ? data.rawContent.value
           : this.rawContent,
@@ -504,6 +554,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
     return (StringBuffer('IntentionRow(')
           ..write('id: $id, ')
           ..write('sourceApp: $sourceApp, ')
+          ..write('sourcePackage: $sourcePackage, ')
           ..write('rawContent: $rawContent, ')
           ..write('snippet: $snippet, ')
           ..write('deepLink: $deepLink, ')
@@ -522,6 +573,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
   int get hashCode => Object.hash(
     id,
     sourceApp,
+    sourcePackage,
     rawContent,
     snippet,
     deepLink,
@@ -539,6 +591,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
       (other is IntentionRow &&
           other.id == this.id &&
           other.sourceApp == this.sourceApp &&
+          other.sourcePackage == this.sourcePackage &&
           other.rawContent == this.rawContent &&
           other.snippet == this.snippet &&
           other.deepLink == this.deepLink &&
@@ -554,6 +607,7 @@ class IntentionRow extends DataClass implements Insertable<IntentionRow> {
 class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
   final Value<int> id;
   final Value<String> sourceApp;
+  final Value<String?> sourcePackage;
   final Value<String> rawContent;
   final Value<String?> snippet;
   final Value<String?> deepLink;
@@ -567,6 +621,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
   const IntentionsCompanion({
     this.id = const Value.absent(),
     this.sourceApp = const Value.absent(),
+    this.sourcePackage = const Value.absent(),
     this.rawContent = const Value.absent(),
     this.snippet = const Value.absent(),
     this.deepLink = const Value.absent(),
@@ -581,6 +636,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
   IntentionsCompanion.insert({
     this.id = const Value.absent(),
     required String sourceApp,
+    this.sourcePackage = const Value.absent(),
     required String rawContent,
     this.snippet = const Value.absent(),
     this.deepLink = const Value.absent(),
@@ -598,6 +654,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
   static Insertable<IntentionRow> custom({
     Expression<int>? id,
     Expression<String>? sourceApp,
+    Expression<String>? sourcePackage,
     Expression<String>? rawContent,
     Expression<String>? snippet,
     Expression<String>? deepLink,
@@ -612,6 +669,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (sourceApp != null) 'source_app': sourceApp,
+      if (sourcePackage != null) 'source_package': sourcePackage,
       if (rawContent != null) 'raw_content': rawContent,
       if (snippet != null) 'snippet': snippet,
       if (deepLink != null) 'deep_link': deepLink,
@@ -628,6 +686,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
   IntentionsCompanion copyWith({
     Value<int>? id,
     Value<String>? sourceApp,
+    Value<String?>? sourcePackage,
     Value<String>? rawContent,
     Value<String?>? snippet,
     Value<String?>? deepLink,
@@ -642,6 +701,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
     return IntentionsCompanion(
       id: id ?? this.id,
       sourceApp: sourceApp ?? this.sourceApp,
+      sourcePackage: sourcePackage ?? this.sourcePackage,
       rawContent: rawContent ?? this.rawContent,
       snippet: snippet ?? this.snippet,
       deepLink: deepLink ?? this.deepLink,
@@ -663,6 +723,9 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
     }
     if (sourceApp.present) {
       map['source_app'] = Variable<String>(sourceApp.value);
+    }
+    if (sourcePackage.present) {
+      map['source_package'] = Variable<String>(sourcePackage.value);
     }
     if (rawContent.present) {
       map['raw_content'] = Variable<String>(rawContent.value);
@@ -702,6 +765,7 @@ class IntentionsCompanion extends UpdateCompanion<IntentionRow> {
     return (StringBuffer('IntentionsCompanion(')
           ..write('id: $id, ')
           ..write('sourceApp: $sourceApp, ')
+          ..write('sourcePackage: $sourcePackage, ')
           ..write('rawContent: $rawContent, ')
           ..write('snippet: $snippet, ')
           ..write('deepLink: $deepLink, ')
@@ -1312,6 +1376,7 @@ typedef $$IntentionsTableCreateCompanionBuilder =
     IntentionsCompanion Function({
       Value<int> id,
       required String sourceApp,
+      Value<String?> sourcePackage,
       required String rawContent,
       Value<String?> snippet,
       Value<String?> deepLink,
@@ -1327,6 +1392,7 @@ typedef $$IntentionsTableUpdateCompanionBuilder =
     IntentionsCompanion Function({
       Value<int> id,
       Value<String> sourceApp,
+      Value<String?> sourcePackage,
       Value<String> rawContent,
       Value<String?> snippet,
       Value<String?> deepLink,
@@ -1380,6 +1446,11 @@ class $$IntentionsTableFilterComposer
 
   ColumnFilters<String> get sourceApp => $composableBuilder(
     column: $table.sourceApp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourcePackage => $composableBuilder(
+    column: $table.sourcePackage,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1478,6 +1549,11 @@ class $$IntentionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get sourcePackage => $composableBuilder(
+    column: $table.sourcePackage,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get rawContent => $composableBuilder(
     column: $table.rawContent,
     builder: (column) => ColumnOrderings(column),
@@ -1543,6 +1619,11 @@ class $$IntentionsTableAnnotationComposer
 
   GeneratedColumn<String> get sourceApp =>
       $composableBuilder(column: $table.sourceApp, builder: (column) => column);
+
+  GeneratedColumn<String> get sourcePackage => $composableBuilder(
+    column: $table.sourcePackage,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get rawContent => $composableBuilder(
     column: $table.rawContent,
@@ -1640,6 +1721,7 @@ class $$IntentionsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<String> sourceApp = const Value.absent(),
+                Value<String?> sourcePackage = const Value.absent(),
                 Value<String> rawContent = const Value.absent(),
                 Value<String?> snippet = const Value.absent(),
                 Value<String?> deepLink = const Value.absent(),
@@ -1653,6 +1735,7 @@ class $$IntentionsTableTableManager
               }) => IntentionsCompanion(
                 id: id,
                 sourceApp: sourceApp,
+                sourcePackage: sourcePackage,
                 rawContent: rawContent,
                 snippet: snippet,
                 deepLink: deepLink,
@@ -1668,6 +1751,7 @@ class $$IntentionsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required String sourceApp,
+                Value<String?> sourcePackage = const Value.absent(),
                 required String rawContent,
                 Value<String?> snippet = const Value.absent(),
                 Value<String?> deepLink = const Value.absent(),
@@ -1681,6 +1765,7 @@ class $$IntentionsTableTableManager
               }) => IntentionsCompanion.insert(
                 id: id,
                 sourceApp: sourceApp,
+                sourcePackage: sourcePackage,
                 rawContent: rawContent,
                 snippet: snippet,
                 deepLink: deepLink,

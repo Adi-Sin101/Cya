@@ -32,12 +32,21 @@ class CyaDatabase extends _$CyaDatabase {
   static const String databaseFileName = 'cya.db';
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
       await m.createAll();
+      await _createHotPathIndices();
+    },
+    onUpgrade: (m, from, to) async {
+      // v1 → v2: `source_package`, so a promise can show the real launcher
+      // icon of the app it came from. Additive and nullable, so rows written
+      // by a v1 native build stay valid.
+      if (from < 2) {
+        await m.addColumn(intentions, intentions.sourcePackage);
+      }
       await _createHotPathIndices();
     },
     beforeOpen: (details) async {

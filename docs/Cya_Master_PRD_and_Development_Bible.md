@@ -417,22 +417,26 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Module | Status | Last updated | Working? | Notes / known issues |
 |---|---|---|---|---|
 | Project scaffold & layering | ✅ | 2026-07-08 | Yes | core/domain/data/presentation layering in place (Iteration 1). |
-| Theming (light/dark, Plus Jakarta Sans) | ✅ | 2026-07-08 | Yes | M3 light+dark from §8.1; PJS bundled. Dark Surface2 #243137 pending confirm. |
-| Drift DB + schema + migrations | ✅ | 2026-08-31 | Yes | v1: intentions + intention_events + preferences + FTS5 (trigger-maintained) + hot-path indices. Contract in docs/native_db_contract.md. |
-| Native-thin capture (Share Sheet) | ✅ | 2026-08-31 | Yes | Kotlin CaptureActivity → direct SQLite write, no Flutter engine. Cold fresh-install 762 ms total / 172 ms write; warm 117 ms median. |
-| Native animated splash (video) | ✅ | 2026-07-08 | Yes | Iteration 1: SplashActivity plays mp4 pre-engine; flash-free handoff. Not a PRD-mandated module — supports §5.2/§9.1. |
+| Theming (light/dark, Plus Jakarta Sans) | ✅ | 2026-08-31 | Yes | M3 light+dark from §8.1; PJS bundled. Iteration 6: type scale enlarged (display 44/36 → label 12), motion/spacing/radius tokens, status **ink** variants so warning/error/success pass 4.5:1 as text (ADR-009), edge-to-edge system bars. |
+| Drift DB + schema + migrations | ✅ | 2026-08-31 | Yes | **v2**: adds `intentions.source_package`. Both runtimes carry the upgrade (`onUpgrade` / `CyaDatabaseContract.upgradeStatements`); a v1→v2 migration test asserts old rows survive. Contract in docs/native_db_contract.md. |
+| Native-thin capture (Share Sheet) | ✅ | 2026-08-31 | Yes | Kotlin CaptureActivity → direct SQLite write, no Flutter engine. Cold fresh-install 762 ms total / 172 ms write; warm 117 ms median; re-measured after the v2 schema and the rename: **37–120 ms**. Now also records the sharing app's package. |
+| Native animated splash (video) | ➖ | 2026-08-31 | Removed | Superseded by the in-Flutter sprite splash. `SplashActivity` was never exported and had no launcher filter — dead code carrying a 3.4 MB mp4. Deleted (Iteration 6); release APK dropped 63.4 MB → 20.8 MB with per-ABI splits. |
 | Native alarm scheduler | ✅ | 2026-08-31 | Yes | `setExactAndAllowWhileIdle`, degrades to inexact when the permission is absent; re-armed on boot and on every app resume. |
 | Local notifications + escalation | ✅ | 2026-08-31 | Yes | Native channels quiet/banner; Done + Snooze actions write to the store with no Flutter engine; past the snooze limit Cya! stops interrupting (digest tier). |
 | Snooze limit logic | ✅ | 2026-08-31 | Yes | SnoozePolicy (max 3) enforced in SnoozeIntention; detail screen prompts to resolve/archive. |
-| Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. |
-| Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / Open-in-app (stub until deep links) / Snooze + "Why this matters". Deep-linkable route. |
+| Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. Iteration 6: 6 blocks → 4 (level inlined; garden preview + week stats merged into one `WeekCard`), staggered entrances, animated ring/counters. Day boundary now rolls over at midnight on its own (`todayProvider`). |
+| Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / **Open-in-app (real handoff via `openLink`)** / Snooze + "Why this matters". Actions moved above the supporting cards; category collapsed from 7 inline chips to one row + sheet. |
 | Quick Settings Tile | ✅ | 2026-08-31 | Yes | TileService opens a native dialog capture (clipboard pre-filled), engine-free. Tile capture measured at 35 ms. |
-| Home-screen widget | ⚠️ | 2026-08-31 | Untested on a home screen | RemoteViews widget reading the store directly (no engine); provider registered and its update path runs clean. Placing it on the launcher was not automated — needs a manual look. |
+| Home-screen widget | ⚠️ | 2026-08-31 | Untested on a home screen | RemoteViews widget reading the store directly (no engine); provider registered and its `APPWIDGET_UPDATE` receiver confirmed via `dumpsys`. Placing it on the launcher still could not be automated over adb — needs one manual look on a real device. |
 | Categories + FTS search | ✅ | 2026-08-31 | Yes | FTS5 search verified against natively written rows (ADR-005); seven manual categories with a picker on Promise Detail, filter chips on Promises, and an icon on every tile. |
-| Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the full Memory Garden (weekly beds, plant species, streak) are pure projections. Rive reward moments still deferred — see 13.6. |
+| Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the Memory Garden are pure projections. Iteration 6 rebuilt the garden as a painted scene: time-of-day sky, sun/moon/stars, parallax hills, textured soil, **8** species with ground shadows, wind sway, fireflies. Reward moments now ship as Flutter particle bursts (ADR-007) rather than Rive. |
 | Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
 | Weekly digest | ✅ | 2026-08-31 | Yes | Sunday 18:00 native alarm (self-rescheduling), low-importance notification leading with what was kept, `cya://digest` into a review screen with one-tap resolution. |
-| Enrichment (date extraction) | ⬜ | | | Fast-follow. |
+| Enrichment (date extraction) | ✅ | 2026-08-31 | Yes | Rule-based on-device parser (ADR-008): named days, weekdays, clock times, plus keyword auto-categorization. Runs after startup, never on the capture path; never overwrites a user's choice; re-arms the alarm when it moves a reminder. Verified on device — a natively captured "Call the plumber tomorrow at 9am" was categorised `reply` and rescheduled to 09:00. |
+| Motion & haptics system | ✅ | 2026-08-31 | Yes | `AppMotion` tokens + `CyaHaptics` (a five-entry vocabulary, suppressed under reduced motion). Entrance/Pressable/AnimatedCounter/RewardBurst primitives. Reduced motion verified by test: the Garden settles instead of animating forever. |
+| Source-app identity | ✅ | 2026-08-31 | Yes | `source_package` (schema v2) + an `appIcon` channel rendering the real launcher icon; cached per package in Dart. Falls back to a brand glyph, then the mascot. Verified with Chrome and Settings icons on device. |
+| Accessibility (§8.4) | 🟨 | 2026-08-31 | Partly | Text scale clamped 0.85–1.35; status inks pass 4.5:1 in both themes; 48dp targets; semantics on toggles/nav/ring; reduced motion honoured. Not yet audited with a screen reader. |
+| App identity / release prep | ✅ | 2026-08-31 | Yes | `applicationId` moved off `com.example` to **`dev.cya.app`** (Kotlin package tree moved with it); release still signs with the debug key — a real keystore is outstanding. |
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
 
 ### 13.2 Current session log
@@ -710,6 +714,55 @@ Consequences: No Flutter dependency anywhere on the resurfacing path, which is w
   go_router as a location; MainActivity passes it over the channel instead.
 ```
 
+```
+ADR-007 (2026-08-31) Reward animations are Flutter particle bursts, not Rive
+Context: §8.3 specifies Rive for reward moments (resolution, level-up, new growth, achievement
+  unlock). No `.riv` asset exists, and authoring a mascot rig is a design job, not an engineering
+  one — it has been an open question since §13.6 was written, and the reward moment was the last
+  thing standing between the loop and feeling finished.
+Decision: Implement reward moments as a `CustomPainter` particle burst (`RewardBurst`) — ~34
+  ballistic leaves/petals integrated on the CPU, drawn in one pass inside a `RepaintBoundary`,
+  shown through an `OverlayEntry` that removes itself. Deterministic from a seed (the intention id),
+  so a promise always celebrates itself the same way.
+Consequences: No new dependency, no asset pipeline, no runtime; cheaper than a Rive player. It
+  cannot express a character, so the mascot still appears only as static art in empathy surfaces.
+  Revisit if and when a rig is produced — the call site is one function (`showRewardBurst`).
+  Suppressed entirely under reduced motion; the snackbar and haptic still fire.
+```
+
+```
+ADR-008 (2026-08-31) Enrichment is a deterministic on-device parser, not ML Kit
+Context: §5.5/§6.5 allow either an on-device model or rules for date extraction and
+  auto-categorization. The requirement that actually binds is §3.2: none of it may touch the
+  capture path.
+Decision: A pure-Dart rule set (`EnrichmentService`) — ordered keyword rules for the seven
+  categories, and a conservative date parser (named days, weekdays with word boundaries, clock
+  times with am/pm disambiguation). Applied by `EnrichIntention` after startup.
+Consequences: Testable to the minute (17 tests), no model download, no inference cost, and
+  auditable when it guesses wrong. It will miss phrasings a model would catch; the exchange is that
+  it never invents a deadline, because a wrong deadline moves a reminder the user never asked to
+  move. Two rules make that safe: enrichment never overwrites a category the user chose, and it
+  only moves a reminder that is still the untouched zero-tap default.
+  It also runs inline rather than in an isolate — the rules finish in microseconds and the only
+  async work is the DB write, so a `compute()` hop would cost more than it saves. Swap that if a
+  model ever replaces the rules.
+```
+
+```
+ADR-009 (2026-08-31) Status colours split into fills and inks
+Context: §8.1 pins Warning `#F59E0B`, Error `#EF4444` and Success `#16A34A`. Used as *text* on the
+  §8.1 light surface they measure 2.2:1, 3.8:1 and 3.3:1 — all under the 4.5:1 body-text floor
+  §8.4 requires. The same values are exactly right as 12%-alpha washes and filled controls.
+Decision: Keep the §8.1 values as `CyaColors.success/warning/error` (fills) and add
+  `successInk/warningInk/errorInk`, darkened for light and lightened for dark. Anything carrying
+  letters uses the ink.
+  Dark mode also promotes Soft Sage to `primary`: Sage on the §8.1 dark background is 2.9:1, which
+  fails for both text and UI components.
+Consequences: A small vocabulary to learn ("is this colour carrying letters?"), in exchange for a
+  palette that passes in both themes without abandoning the brand. The §8.1 table is unchanged and
+  still the source of truth for the fills.
+```
+
 ### 13.4 Mistakes & lessons learned
 ```
 [L-001] The shared database is only as portable as the weakest SQLite that opens it
@@ -742,6 +795,39 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
   trap for `return`. More generally: a write is not verified by the writer's own return value -
   verify it by reading the data back (`sqlite3` on the device), which is what finally caught this.
   Refactoring native code needs its own device run; the Dart tests could never have seen this.
+```
+
+```
+[L-004] An "ambient" animation is a permanent cost, and it makes the app untestable
+What broke / went wrong: Iteration 6 added a breathing glow on the capture FAB and a wind sway in
+  the garden. Twenty widget tests then hung: `pumpAndSettle` waits for the tree to go quiet, and a
+  `repeat()`ing controller never does. The suite went from 15 seconds to a 10-minute timeout.
+Why: A looping `AnimationController` is not "a nice touch" — it is a repaint every frame for the
+  whole life of the widget. The FAB's glow ran on every screen, forever, for decoration.
+Fix: Deleted the FAB's loop (its shadow is static now) and confined the wind to the Garden screen's
+  hero, where the motion IS the feature. Home's garden strip is still. Tests that visit the Garden
+  pump a fixed number of frames instead of settling, and a reduced-motion test asserts the scene
+  settles when the loop is off.
+Lesson / rule to remember going forward: Before adding a continuous animation, ask what it costs
+  when the user is not looking at it. Reserve looping motion for the one surface it is the point of;
+  everywhere else, animate transitions, not idle states. If `pumpAndSettle` stops working, that is
+  the design telling you something, not the test being awkward.
+```
+
+```
+[L-005] Writing the row is only half of a rescheduling
+What broke / went wrong: Enrichment moved a promise's `reminder_at` from tonight to tomorrow 09:00
+  and logged the event — but AlarmManager still held the original alarm. The store and the OS
+  disagreed, and the half the user experiences is the OS's.
+Why: `recordExtractedDeadline` was written as a repository call, and repositories do not schedule.
+  Every other mutation path (`CaptureIntention`, `SnoozeIntention`, `ManageIntention`) pairs the
+  write with a `ReminderScheduler` call; the new one silently did not. It looked correct on device
+  only because `rescheduleAll()` runs on app resume and papered over it.
+Fix: `EnrichIntention` takes a `ReminderScheduler` and re-arms whenever it moves a reminder; a test
+  asserts the scheduled instant matches the stored one.
+Lesson / rule to remember going forward: In this app, `reminder_at` is a two-sided fact — SQLite
+  and AlarmManager both hold it. Any new code path that changes one must change the other in the
+  same operation. A periodic reconciler (resume, boot) is insurance, never the mechanism.
 ```
 
 ### 13.5 Test & verification log
@@ -782,15 +868,34 @@ Lesson / rule to remember going forward: an inline block that must run code *aft
 | 2026-08-31 | Widget provider registered + update path | ✅ | `dumpsys appwidget` lists the provider; update broadcast runs clean; counts match a SQL cross-check. |
 | 2026-08-31 | Widget rendered on a launcher home screen | ⬜ not tested | Could not be automated over adb — needs a manual look. |
 | 2026-08-31 | Home reads 7 promises, 4/7 done, 170 XP | ✅ | XP = 7 captures x 10 + 4 resolutions x 25, exactly as projected. |
+| 2026-08-31 | Iteration 6 — `flutter analyze` | ✅ 0 issues | After the type scale, motion system, garden rewrite, schema v2 and the package rename. |
+| 2026-08-31 | Iteration 6 — `flutter test` (121 tests) | ✅ 121/121 | +17 enrichment (rules + use-case + alarm sync), +2 rollover/reduced-motion, +1 v1→v2 migration; 9 widget tests updated to the new copy. |
+| 2026-08-31 | Schema v2 migration on a live device DB | ✅ | Existing v1 rows kept their data and got `source_package = NULL`; new native captures populate it. `PRAGMA user_version` = 2 on both runtimes. |
+| 2026-08-31 | Share Sheet capture after v2 + rename | ✅ 37–120 ms | `capture_ok id=2 capture_ms=42` under `dev.cya.app`; row + `captured` event read back with `sqlite3`. |
+| 2026-08-31 | Real launcher icons in the promise list | ✅ | Chrome and Settings icons fetched over the `appIcon` channel and rendered; unknown sources fall back to the mascot. |
+| 2026-08-31 | Enrichment on device, off the capture path | ✅ | A natively captured "Call the plumber tomorrow at 9am" was left untouched at capture time, then on app open categorised `reply`, given `extracted_deadline` 09:00 and rescheduled — with `edited` events for both. |
+| 2026-08-31 | Midnight rollover | ✅ | `FakeAsync`: the day advances at 00:00 with no interaction, and re-arms for the following night. |
+| 2026-08-31 | Reduced motion | ✅ | With `disableAnimations`, the Garden settles under `pumpAndSettle` — i.e. no ticker is left running — and still renders complete. |
+| 2026-08-31 | Edge-to-edge in light + dark | ✅ | App background runs under the status and navigation bars; bar icons follow the resolved theme. |
+| 2026-08-31 | Full loop on a **release** build | ✅ | Fresh install → capture from the in-app sheet → notification permission asked at the capture (not up front) → tick → XP 10 → 35, ring reads "all done", a flower appears in the week's garden strip. |
+| 2026-08-31 | Release APK size | ✅ 20.8 MB | Was 63.4 MB: per-ABI splits, the dead 3.4 MB splash video removed, and the 1.6 MB logo downscaled to 256px (83 KB). |
 
 ### 13.6 Open questions
 - Which capture mechanism becomes the primary driver of retention in practice (Share Sheet vs Tile)?
 - Confirm exact dark-mode Surface 2 hex from the palette file.
-- Should the day boundary roll over live while the app is open (midnight timer), or is a resume-time refresh enough?
+- ~~Should the day boundary roll over live while the app is open (midnight timer), or is a resume-time refresh enough?~~ Decided: both. `todayProvider` schedules a single timer for the next midnight *and* re-checks on resume, because a timer does not fire while the process is frozen.
 - ~~Exact XP weights for capture vs resolution; level curve.~~ Decided in ADR-002.
 - Digest timing/frequency defaults.
-- Rive reward animations (8.3) need designed .riv assets before they can be built; the garden
-  currently animates with Flutter's own animation system. Who produces the mascot rig?
+- ~~Rive reward animations (8.3) need designed .riv assets before they can be built.~~ Decided in
+  ADR-007: reward moments ship as Flutter particle bursts. **Still open:** whether to produce a
+  mascot rig at all, now that the loop feels finished without one.
+- The home-screen widget has still never been seen on a launcher. One manual placement would
+  close it.
+- A release keystore. The release build currently signs with the debug key, which is fine for
+  sideloading and impossible for the Play Store.
+- Enrichment's rules are English-only. What is the plan for a non-English capture?
+- iOS: nothing native exists — no scheduler, no share extension, no widget. The whole §5.2
+  boundary needs a second implementation.
 
 ---
 

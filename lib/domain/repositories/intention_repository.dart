@@ -78,6 +78,18 @@ abstract interface class IntentionRepository {
     required DateTime at,
   });
 
+  /// Promises on-device enrichment has not processed yet (PRD §5.5).
+  Future<List<Intention>> needingEnrichment({int limit});
+
+  /// Stores an on-device enrichment result (PRD §5.5). [reminderAt] moves the
+  /// alarm; pass null to record the finding without touching it.
+  Future<void> recordExtractedDeadline(
+    int id, {
+    required DateTime deadline,
+    required DateTime? reminderAt,
+    required DateTime at,
+  });
+
   /// Permanent deletion, including the promise's event log (PRD §3.5).
   Future<void> deleteIntention(int id);
 }

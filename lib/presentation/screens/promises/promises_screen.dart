@@ -5,12 +5,16 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/result.dart';
 import '../../../core/router/route_paths.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/cya_colors_extension.dart';
 import '../../../domain/entities/intention.dart';
 import '../../../domain/enums/intention_status.dart';
 import '../../../domain/enums/promise_category.dart';
 import '../../providers/intention_providers.dart';
+import '../../widgets/motion/entrance.dart';
+import '../../widgets/motion/reward_burst.dart';
 import '../home/widgets/promise_tile.dart';
-import '../promise_detail/widgets/category_picker.dart' show categoryIcon;
+import 'widgets/promise_filter_bar.dart';
 
 /// The full promise list with on-device search and status filters
 /// (PRD §6.4, §8.2).
@@ -21,20 +25,10 @@ class PromisesScreen extends ConsumerStatefulWidget {
   ConsumerState<PromisesScreen> createState() => _PromisesScreenState();
 }
 
-enum _Filter {
-  open('Open'),
-  done('Done'),
-  all('All');
-
-  const _Filter(this.label);
-
-  final String label;
-}
-
 class _PromisesScreenState extends ConsumerState<PromisesScreen> {
   final TextEditingController _search = TextEditingController();
   String _query = '';
-  _Filter _filter = _Filter.open;
+  PromiseFilter _filter = PromiseFilter.open;
   PromiseCategory? _category;
 
   @override
@@ -56,20 +50,49 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
       child: Column(
         children: <Widget>[
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.page,
+              AppSpacing.md,
+              AppSpacing.page,
+              AppSpacing.md,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text('Promises', style: theme.textTheme.headlineMedium),
-                const SizedBox(height: 12),
+                Text('Promises', style: theme.textTheme.displaySmall),
+                const SizedBox(height: AppSpacing.lg),
                 SearchBar(
                   controller: _search,
                   hintText: 'Search everything you saved',
-                  leading: const Icon(Icons.search_rounded),
+                  elevation: const WidgetStatePropertyAll<double>(0),
+                  backgroundColor: WidgetStatePropertyAll<Color>(
+                    context.cyaColors.surface2,
+                  ),
+                  textStyle: WidgetStatePropertyAll<TextStyle?>(
+                    theme.textTheme.bodyLarge,
+                  ),
+                  hintStyle: WidgetStatePropertyAll<TextStyle?>(
+                    theme.textTheme.bodyLarge?.copyWith(
+                      color: context.cyaColors.textSecondary,
+                    ),
+                  ),
+                  padding: const WidgetStatePropertyAll<EdgeInsets>(
+                    EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  ),
+                  shape: WidgetStatePropertyAll<OutlinedBorder>(
+                    RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md),
+                    ),
+                  ),
+                  leading: Icon(
+                    Icons.search_rounded,
+                    color: context.cyaColors.textSecondary,
+                  ),
                   trailing: <Widget>[
                     if (_query.isNotEmpty)
                       IconButton(
                         icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Clear search',
                         onPressed: () {
                           _search.clear();
                           setState(() => _query = '');
@@ -78,39 +101,13 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
                   ],
                   onChanged: (value) => setState(() => _query = value),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: <Widget>[
-                    for (final filter in _Filter.values) ...<Widget>[
-                      ChoiceChip(
-                        label: Text(filter.label),
-                        selected: _filter == filter,
-                        onSelected: (_) => setState(() => _filter = filter),
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: <Widget>[
-                      for (final category
-                          in PromiseCategory.values) ...<Widget>[
-                        FilterChip(
-                          label: Text(category.label),
-                          avatar: Icon(categoryIcon(category), size: 16),
-                          selected: _category == category,
-                          onSelected: (selected) => setState(
-                            () => _category = selected ? category : null,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                    ],
-                  ),
+                const SizedBox(height: AppSpacing.md),
+                PromiseFilterBar(
+                  filter: _filter,
+                  category: _category,
+                  onFilterChanged: (value) => setState(() => _filter = value),
+                  onCategoryChanged: (value) =>
+                      setState(() => _category = value),
                 ),
               ],
             ),
@@ -130,18 +127,31 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
                   );
                 }
                 return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 130),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.xs,
+                    AppSpacing.page,
+                    AppSpacing.navClearance,
+                  ),
                   itemCount: visible.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  separatorBuilder: (_, _) =>
+                      const SizedBox(height: AppSpacing.md),
                   itemBuilder: (context, index) {
                     final promise = visible[index];
-                    return PromiseTile(
-                      key: ValueKey<int>(promise.id),
-                      promise: promise,
-                      now: now,
-                      onToggle: () => _toggle(promise.id),
-                      onTap: () =>
-                          context.push(RoutePaths.promiseDetail(promise.id)),
+                    return Entrance(
+                      // Only the first screenful staggers; scrolling further
+                      // should feel instant, not choreographed.
+                      delay: index < 7
+                          ? Duration(milliseconds: 45 * index)
+                          : Duration.zero,
+                      child: PromiseTile(
+                        key: ValueKey<int>(promise.id),
+                        promise: promise,
+                        now: now,
+                        onToggle: () => _toggle(promise),
+                        onTap: () =>
+                            context.push(RoutePaths.promiseDetail(promise.id)),
+                      ),
                     );
                   },
                 );
@@ -156,20 +166,23 @@ class _PromisesScreenState extends ConsumerState<PromisesScreen> {
   bool _matchesFilter(Intention promise) {
     if (_category != null && promise.category != _category!.wire) return false;
     return switch (_filter) {
-      _Filter.open => promise.status.isPending,
-      _Filter.done => promise.status == IntentionStatus.resolved,
-      _Filter.all => true,
+      PromiseFilter.open => promise.status.isPending,
+      PromiseFilter.done => promise.status == IntentionStatus.resolved,
+      PromiseFilter.all => true,
     };
   }
 
-  Future<void> _toggle(int id) async {
-    final result = await ref.read(resolveIntentionProvider).toggle(id);
+  Future<void> _toggle(Intention promise) async {
+    final wasResolved = promise.isResolved;
+    final result = await ref.read(resolveIntentionProvider).toggle(promise.id);
     if (!mounted) return;
     if (result.errorOrNull case final AppError error) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(error.message)));
+      return;
     }
+    if (!wasResolved) showRewardBurst(context, seed: promise.id);
   }
 }
 
@@ -181,7 +194,7 @@ class _EmptyList extends StatelessWidget {
   });
 
   final bool searching;
-  final _Filter filter;
+  final PromiseFilter filter;
   final PromiseCategory? category;
 
   @override
@@ -196,7 +209,7 @@ class _EmptyList extends StatelessWidget {
         : searching
         ? ('🔍', 'Nothing matches that', 'Try a different word.')
         : switch (filter) {
-            _Filter.done => (
+            PromiseFilter.done => (
               '🌱',
               'Nothing finished yet',
               'Tick a promise off and it grows in your garden.',
@@ -209,21 +222,21 @@ class _EmptyList extends StatelessWidget {
           };
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(36),
+        padding: const EdgeInsets.all(AppSpacing.section),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Text(emoji, style: const TextStyle(fontSize: 40)),
-            const SizedBox(height: 12),
+            Text(emoji, style: const TextStyle(fontSize: 44)),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
-              style: theme.textTheme.titleMedium,
+              style: theme.textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.sm),
             Text(
               body,
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
           ],

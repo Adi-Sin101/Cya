@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_motion.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/cya_colors_extension.dart';
 import '../../../../domain/models/user_level.dart';
 
-/// The gamification level pill + XP progress bar (PRD §6.6, §8.2).
+/// The gamification level + XP progress (PRD §6.6, §8.2).
+///
+/// A line, not a card: an icon, the level, and a bar that fills toward the
+/// next one. The XP figure sits at the end of the bar rather than under it, so
+/// the whole thing is one row of information instead of three.
 class LevelBadge extends StatelessWidget {
   const LevelBadge({super.key, required this.level});
 
@@ -13,56 +19,74 @@ class LevelBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cya = context.cyaColors;
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cya.surface2),
-      ),
-      child: Row(
-        children: <Widget>[
-          Container(
-            width: 44,
-            height: 44,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                colors: <Color>[Color(0xFF2E705B), Color(0xFF74B69D)],
+    return Semantics(
+      label:
+          'Level ${level.level}, ${level.title}. '
+          '${level.xp} of ${level.xpTarget} experience.',
+      child: ExcludeSemantics(
+        child: Row(
+          children: <Widget>[
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: theme.colorScheme.secondaryContainer,
+              ),
+              child: Icon(
+                Icons.eco_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
               ),
             ),
-            child: const Icon(Icons.bolt_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  'Level ${level.level} · ${level.title}',
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: 6),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6),
-                  child: LinearProgressIndicator(
-                    value: level.progress,
-                    minHeight: 7,
-                    backgroundColor: cya.surface2,
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      theme.colorScheme.primary,
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          'Level ${level.level} · ${level.title}',
+                          style: theme.textTheme.titleSmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        '${_grouped(level.xp)} / ${_grouped(level.xpTarget)}',
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs + 2),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    // The bar fills toward its value rather than appearing at
+                    // it — the one place on Home where progress is visibly
+                    // *progress*.
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: level.progress),
+                      duration: AppMotion.of(context, AppMotion.slow),
+                      curve: AppMotion.enter,
+                      builder: (context, value, _) => LinearProgressIndicator(
+                        value: value,
+                        minHeight: 7,
+                        backgroundColor: cya.surface2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          theme.colorScheme.primary,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${_grouped(level.xp)} / ${_grouped(level.xpTarget)} XP',
-                  style: theme.textTheme.labelMedium,
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

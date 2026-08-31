@@ -11,8 +11,6 @@
         android:label="Cya!"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">
-        <!-- Native, pre-Flutter animated splash. This is the launcher; it plays
-             the intro video then hands off to MainActivity (PRD §5.2). -->
         <!-- Native-thin capture (PRD 5.4): an exported, translucent, engine-free
              activity that writes the capture straight to the shared SQLite file
              and dismisses. Nothing may be added to this path. -->
@@ -54,13 +52,6 @@
                 <action android:name="android.service.quicksettings.action.QS_TILE"/>
             </intent-filter>
         </service>
-        <activity
-            android:name=".SplashActivity"
-            android:exported="false"
-            android:theme="@style/SplashTheme"
-            android:screenOrientation="portrait"
-            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode">
-        </activity>
         <activity
             android:name=".MainActivity"
             android:exported="true"

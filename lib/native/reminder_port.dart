@@ -45,6 +45,23 @@ class ReminderPort {
   Future<bool> ensureNotificationPermission() async =>
       await _invoke<bool>('ensureNotificationPermission') ?? true;
 
+  /// Hands a captured promise's `deepLink` back to the OS, so "Open in
+  /// Messenger" returns the user to the exact conversation they saved from
+  /// (PRD §3.4 — closing the loop means going back where it started).
+  ///
+  /// Returns whether anything on the device could handle it, so the UI can say
+  /// so instead of appearing to do nothing.
+  Future<bool> openLink(String link) async =>
+      await _invoke<bool>('openLink', <String, Object?>{'link': link}) ?? false;
+
+  /// [packageName]'s launcher icon as PNG bytes, or `null` when that app is
+  /// not installed (or the platform has no such concept).
+  ///
+  /// Uncached on purpose — caching belongs to the caller, which knows how long
+  /// the bytes should live. See `AppIconCache`.
+  Future<Uint8List?> appIcon(String packageName) =>
+      _invoke<Uint8List>('appIcon', <String, Object?>{'package': packageName});
+
   /// The deep link that launched the app, if a reminder notification did
   /// (`cya://promise/<id>`). Consumed once.
   Future<String?> consumeInitialDeepLink() =>

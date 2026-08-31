@@ -13,6 +13,7 @@ class Intention {
     required this.rawContent,
     required this.capturedAt,
     required this.updatedAt,
+    this.sourcePackage,
     this.snippet,
     this.deepLink,
     this.reminderAt,
@@ -26,6 +27,11 @@ class Intention {
 
   /// Where the intention came from, e.g. `Messenger`, `Chrome`, `Cya!`.
   final String sourceApp;
+
+  /// The Android package [sourceApp] is the label of, e.g. `com.whatsapp`.
+  /// `null` for an in-app capture, or a share whose sender was not attributable.
+  /// Lets the UI show that app's real launcher icon (PRD §8.2).
+  final String? sourcePackage;
 
   /// Exactly what was captured — never rewritten by enrichment (PRD §3.2).
   final String rawContent;
@@ -58,6 +64,7 @@ class Intention {
 
   Intention copyWith({
     String? sourceApp,
+    String? sourcePackage,
     String? rawContent,
     String? snippet,
     String? deepLink,
@@ -71,6 +78,7 @@ class Intention {
     return Intention(
       id: id,
       sourceApp: sourceApp ?? this.sourceApp,
+      sourcePackage: sourcePackage ?? this.sourcePackage,
       rawContent: rawContent ?? this.rawContent,
       snippet: snippet ?? this.snippet,
       deepLink: deepLink ?? this.deepLink,
@@ -90,6 +98,7 @@ class Intention {
       other is Intention &&
           other.id == id &&
           other.sourceApp == sourceApp &&
+          other.sourcePackage == sourcePackage &&
           other.rawContent == rawContent &&
           other.snippet == snippet &&
           other.deepLink == deepLink &&
@@ -105,6 +114,7 @@ class Intention {
   int get hashCode => Object.hash(
     id,
     sourceApp,
+    sourcePackage,
     rawContent,
     snippet,
     deepLink,
@@ -128,11 +138,13 @@ class NewIntention {
     required this.rawContent,
     required this.capturedAt,
     required this.reminderAt,
+    this.sourcePackage,
     this.snippet,
     this.deepLink,
   });
 
   final String sourceApp;
+  final String? sourcePackage;
   final String rawContent;
   final String? snippet;
   final String? deepLink;

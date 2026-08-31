@@ -1,4 +1,4 @@
-# Native ↔ Drift database contract (schema v1)
+# Native ↔ Drift database contract (schema v2)
 
 > Companion to [Cya_Master_PRD_and_Development_Bible.md](Cya_Master_PRD_and_Development_Bible.md)
 > §5.2, §5.4 and §7. **Both runtimes write this file.** If the Kotlin writer and the Drift schema
@@ -31,6 +31,7 @@
 |---|---|---|---|---|
 | `id` | INTEGER | no | autoincrement | primary key |
 | `source_app` | TEXT | no | — | e.g. `Messenger`, `Chrome`, `Cya!` |
+| `source_package` | TEXT | yes | — | **v2.** The Android package `source_app` labels, e.g. `com.whatsapp`. Lets the UI draw that app's real launcher icon. NULL for an in-app capture or an unattributable share |
 | `raw_content` | TEXT | no | — | exactly what was captured; never rewritten by enrichment |
 | `snippet` | TEXT | yes | — | short display form of the source context |
 | `deep_link` | TEXT | yes | — | return-to-source URI |
@@ -120,3 +121,10 @@ creator runs the shared DDL and stamps `PRAGMA user_version = 1`; the other side
 version-1 database and skips its own creation. `CyaDatabaseContract.CREATE_STATEMENTS` (Kotlin) and
 Drift's `onCreate` must therefore stay equivalent, and `test/data/native_contract_test.dart` keeps a
 copy of the native DDL and asserts Drift accepts it unchanged — including that it contains no `fts`.
+
+## Schema history
+
+| Version | Change |
+|---|---|
+| 1 | Initial: `intentions`, `intention_events`, `preferences`, indices |
+| 2 | `intentions.source_package` — the package a share came from, so the promise list can show that app's real launcher icon (PRD §8.2) |

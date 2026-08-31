@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../domain/entities/intention.dart';
 import '../../../../domain/policies/snooze_policy.dart';
 
@@ -7,6 +9,10 @@ import '../../../../domain/policies/snooze_policy.dart';
 ///
 /// The mascot appears here — a reward/empathy surface — and never on the
 /// capture path (PRD §3.6/§8.1).
+///
+/// The fill is mint in both themes, so its foreground is [AppColors.deepInk]
+/// in both themes too. Reaching for `onSurface` here would put white text on
+/// mint in dark mode at 1.6:1 (PRD §8.4).
 class WhyThisMattersCard extends StatelessWidget {
   const WhyThisMattersCard({
     super.key,
@@ -21,20 +27,20 @@ class WhyThisMattersCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFFA7D7C5), Color(0xFF74B69D)],
+          colors: <Color>[AppColors.mint, AppColors.softSage],
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          const Text('🦫', style: TextStyle(fontSize: 30)),
-          const SizedBox(width: 12),
+          const Text('🦫', style: TextStyle(fontSize: 32)),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,14 +48,14 @@ class WhyThisMattersCard extends StatelessWidget {
                 Text(
                   'Why this matters',
                   style: theme.textTheme.titleSmall?.copyWith(
-                    color: const Color(0xFF14532D),
+                    color: AppColors.deepInk,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs + 2),
                 Text(
                   _message(promise, now),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: const Color(0xFF14532D).withValues(alpha: 0.9),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.deepInk,
                   ),
                 ),
               ],

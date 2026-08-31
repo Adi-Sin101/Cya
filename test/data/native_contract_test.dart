@@ -20,6 +20,7 @@ const List<String> _nativeCreateStatements = <String>[
 CREATE TABLE IF NOT EXISTS "intentions" (
   "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   "source_app" TEXT NOT NULL,
+  "source_package" TEXT NULL,
   "raw_content" TEXT NOT NULL,
   "snippet" TEXT NULL,
   "deep_link" TEXT NULL,
@@ -61,6 +62,7 @@ void main() {
   /// Reproduces what `CaptureWriter` does on a device that has never run the app.
   void nativeCapture({
     String sourceApp = 'Messenger',
+    String? sourcePackage = 'com.facebook.orca',
     String rawContent = 'Reply to Sarah about Saturday',
     String? snippet = 'are we still on?',
     String? deepLink,
@@ -68,11 +70,12 @@ void main() {
     native
       ..execute('BEGIN')
       ..execute(
-        'INSERT INTO intentions (source_app, raw_content, snippet, deep_link, '
-        'captured_at, reminder_at, status, snooze_count, updated_at) '
-        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO intentions (source_app, source_package, raw_content, '
+        'snippet, deep_link, captured_at, reminder_at, status, snooze_count, '
+        'updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
         <Object?>[
           sourceApp,
+          sourcePackage,
           rawContent,
           snippet,
           deepLink,
@@ -100,7 +103,7 @@ void main() {
     for (final statement in _nativeCreateStatements) {
       native.execute(statement);
     }
-    native.execute('PRAGMA user_version = 1');
+    native.execute('PRAGMA user_version = 2');
   });
 
   tearDown(() => native.close());
@@ -122,13 +125,16 @@ void main() {
     // Reading forces Drift to open the file, running its migration strategy.
     final promises = await db.intentionDao.watchAllActive().first;
 
-    // Still at version 1: Drift accepted the native schema instead of creating
-    // or upgrading anything, and the natively written row survived untouched.
+    // Still at the current version: Drift accepted the native schema instead
+    // of creating or upgrading anything, and the row survived untouched.
     final version = native.select('PRAGMA user_version').first.values.first;
-    expect(version, 1);
+    expect(version, db.schemaVersion);
     expect(promises, hasLength(1));
     final promise = promises.single;
     expect(promise.sourceApp, 'Messenger');
+    // v2: the package travels with the label, so the UI can draw the real
+    // launcher icon of the app the promise came from.
+    expect(promise.sourcePackage, 'com.facebook.orca');
     expect(promise.title, 'Reply to Sarah about Saturday');
     expect(promise.status, IntentionStatus.open);
     // The encoding contract: seconds, not millis. A millis/seconds mix-up would
@@ -175,6 +181,49 @@ void main() {
     for (final statement in _nativeCreateStatements) {
       expect(statement.toLowerCase(), isNot(contains('fts')));
     }
+  });
+
+  test('a v1 file written by an older native build upgrades cleanly', () async {
+    // A device that captured before source_package existed: the column is
+    // missing and user_version still says 1.
+    final legacy = sqlite3.openInMemory();
+    addTearDown(legacy.close);
+    for (final statement in _nativeCreateStatements) {
+      // The same DDL minus the v2 column, line by line — no escaping games.
+      legacy.execute(
+        statement
+            .split('\n')
+            .where((line) => !line.contains('source_package'))
+            .join('\n'),
+      );
+    }
+    legacy.execute('PRAGMA user_version = 1');
+    legacy.execute(
+      'INSERT INTO intentions (source_app, raw_content, captured_at, status, '
+      'snooze_count, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
+      <Object?>[
+        'Chrome',
+        'Read this later',
+        capturedAt.millisecondsSinceEpoch ~/ 1000,
+        IntentionStatus.open.wire,
+        0,
+        capturedAt.millisecondsSinceEpoch ~/ 1000,
+      ],
+    );
+
+    final db = CyaDatabase.forTesting(
+      NativeDatabase.opened(legacy, closeUnderlyingOnClose: false),
+    );
+    addTearDown(db.close);
+    final promises = await db.intentionDao.watchAllActive().first;
+
+    // The old row is intact and simply has no package to draw an icon from.
+    expect(promises.single.sourceApp, 'Chrome');
+    expect(promises.single.sourcePackage, isNull);
+    expect(
+      legacy.select('PRAGMA user_version').first.values.first,
+      db.schemaVersion,
+    );
   });
 
   test('Dart and native agree on the wire vocabularies', () {

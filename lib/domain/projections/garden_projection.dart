@@ -68,9 +68,10 @@ class GardenScene {
 abstract final class GardenProjection {
   const GardenProjection._();
 
-  /// How many distinct plants exist. Small on purpose: a garden reads as a
-  /// garden, not a botanical index.
-  static const int speciesCount = 5;
+  /// How many distinct plants exist. Enough that a full bed looks like a
+  /// meadow rather than a repeated tile, few enough that the garden still
+  /// reads as one place rather than a botanical index.
+  static const int speciesCount = 8;
 
   /// A plant reaches full size a week after the promise was kept.
   static const Duration timeToMaturity = Duration(days: 7);

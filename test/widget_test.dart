@@ -65,6 +65,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  /// Pumps a fixed number of frames instead of settling.
+  ///
+  /// The Garden runs a deliberate, never-ending wind animation (PRD §8.3), so
+  /// `pumpAndSettle` can never return there. Anything that navigates to the
+  /// Garden has to advance time by hand.
+  Future<void> pumpFrames(WidgetTester tester) async {
+    for (var i = 0; i < 12; i++) {
+      await tester.pump(const Duration(milliseconds: 120));
+    }
+  }
+
   /// Tears the tree down *inside* the test body so drift's stream-cancel timers
   /// run while the tester can still pump them (otherwise flutter_test reports
   /// pending timers at teardown).
@@ -79,8 +90,10 @@ void main() {
 
     await pumpApp(tester);
 
-    expect(find.textContaining('Good Evening'), findsOneWidget);
-    expect(find.text('2 promises'), findsOneWidget);
+    expect(find.textContaining('Good evening'), findsOneWidget);
+    // The hero splits the count from its noun so the number can animate.
+    expect(find.text('2'), findsWidgets);
+    expect(find.text('promises'), findsOneWidget);
     expect(find.text('1/2'), findsOneWidget);
     expect(find.text('Reply to Sarah'), findsOneWidget);
     expect(find.text('Garden'), findsWidgets); // bottom nav
@@ -90,7 +103,8 @@ void main() {
   testWidgets('An empty store shows the designed empty state', (tester) async {
     await pumpApp(tester);
 
-    expect(find.text('0 promises'), findsOneWidget);
+    expect(find.text('promises'), findsOneWidget);
+    expect(find.text('Nothing due. Enjoy it.'), findsOneWidget);
     expect(find.text('Nothing due today'), findsOneWidget);
     await disposeApp(tester);
   });
@@ -104,11 +118,13 @@ void main() {
     expect(find.text('0/1'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey<String>('promise-toggle-1')));
-    await tester.pumpAndSettle();
+    await pumpFrames(tester);
 
     final stored = await db.intentionDao.findById(1);
     expect(stored!.isResolved, isTrue);
-    expect(find.text('1/1'), findsOneWidget);
+    // A finished day stops being a fraction and says so.
+    expect(find.text('all done'), findsOneWidget);
+    expect(find.text('All of them. Every one.'), findsOneWidget);
     await disposeApp(tester);
   });
 
@@ -168,11 +184,11 @@ void main() {
     await pumpApp(tester);
 
     await tester.tap(find.text('Garden'));
-    await tester.pumpAndSettle();
+    await pumpFrames(tester);
 
     expect(find.text('Memory Garden'), findsOneWidget);
-    expect(find.text('1 promises kept, and counting.'), findsOneWidget);
-    expect(find.text('1 growth'), findsOneWidget);
+    expect(find.text('One new growth this week.'), findsOneWidget);
+    expect(find.text('kept, all time'), findsOneWidget);
     await disposeApp(tester);
   });
 
@@ -181,7 +197,7 @@ void main() {
   ) async {
     await pumpApp(tester);
     await tester.tap(find.text('Garden'));
-    await tester.pumpAndSettle();
+    await pumpFrames(tester);
 
     expect(find.text('Bare soil, for now'), findsOneWidget);
     await disposeApp(tester);

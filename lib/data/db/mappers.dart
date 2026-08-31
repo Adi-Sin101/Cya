@@ -10,6 +10,7 @@ extension IntentionRowMapper on IntentionRow {
   Intention toEntity() => Intention(
     id: id,
     sourceApp: sourceApp,
+    sourcePackage: sourcePackage,
     rawContent: rawContent,
     snippet: snippet,
     deepLink: deepLink,

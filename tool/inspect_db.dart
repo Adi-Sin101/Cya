@@ -1,7 +1,7 @@
 // Inspects a `cya.db` pulled off a device, to verify what the *native* capture
 // path actually wrote (PRD §5.4, docs/native_db_contract.md).
 //
-//   adb exec-out run-as com.example.cya cat files/cya.db > pulled.db
+//   adb exec-out run-as dev.cya.app cat files/cya.db > pulled.db
 //   dart run tool/inspect_db.dart pulled.db
 import 'dart:io';
 

@@ -2,17 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/cya_colors_extension.dart';
 import '../../../core/utils/reminder_format.dart';
 import '../../../domain/projections/garden_projection.dart';
 import '../../providers/intention_providers.dart';
-import 'widgets/garden_bed_painter.dart';
+import '../../widgets/motion/animated_counter.dart';
+import '../../widgets/motion/entrance.dart';
+import 'widgets/garden_scene_view.dart';
 
 /// The Memory Garden (PRD §6.6, §8.2) — the emotional core of retention.
 ///
 /// Every plant is a promise the user kept, projected from the event log
 /// (ADR-002): the garden cannot disagree with the stats, because it is the same
 /// truth drawn differently.
+///
+/// The screen has exactly one focal point. This week's growth is a full,
+/// living landscape at the top; everything before it is a quiet strip of soil
+/// in a scrolling history. Giving every week equal visual weight — which is
+/// what a uniform list of cards does — buries the thing the user opened the
+/// screen to see.
 class GardenScreen extends ConsumerWidget {
   const GardenScreen({super.key});
 
@@ -21,80 +30,164 @@ class GardenScreen extends ConsumerWidget {
     final scene = ref.watch(gardenSceneProvider);
     final now = ref.watch(clockProvider)();
 
+    // Newest first: this week's growth is what the user came for.
+    final history = scene.beds.reversed.skip(1).toList();
+
     return SafeArea(
       bottom: false,
       child: CustomScrollView(
         slivers: <Widget>[
-          SliverToBoxAdapter(child: _GardenHeader(scene: scene)),
+          SliverToBoxAdapter(
+            child: Entrance(
+              child: _GardenHero(scene: scene, now: now),
+            ),
+          ),
           if (scene.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: _EmptyGarden(),
-            )
-          else
-            SliverList.builder(
-              // Newest bed first: this week's growth is what the user came for.
-              itemCount: scene.beds.length,
-              itemBuilder: (context, index) => _BedCard(
-                bed: scene.beds[scene.beds.length - 1 - index],
-                now: now,
+            const SliverToBoxAdapter(child: _EmptyGarden())
+          else ...<Widget>[
+            SliverToBoxAdapter(
+              child: Entrance(
+                delay: const Duration(milliseconds: 90),
+                child: _GardenStats(scene: scene),
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 130)),
+            if (history.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.page,
+                    AppSpacing.xxl,
+                    AppSpacing.page,
+                    AppSpacing.md,
+                  ),
+                  child: Text(
+                    'Before this week',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+              ),
+            SliverList.builder(
+              itemCount: history.length,
+              itemBuilder: (context, index) =>
+                  _HistoryBed(bed: history[index], now: now),
+            ),
+          ],
+          const SliverToBoxAdapter(
+            child: SizedBox(height: AppSpacing.navClearance),
+          ),
         ],
       ),
     );
   }
 }
 
-class _GardenHeader extends StatelessWidget {
-  const _GardenHeader({required this.scene});
+/// This week, as a place: a full landscape with the headline sitting in its
+/// sky.
+class _GardenHero extends StatelessWidget {
+  const _GardenHero({required this.scene, required this.now});
+
+  final GardenScene scene;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final plants = scene.beds.isEmpty
+        ? const <GardenPlant>[]
+        : scene.beds.last.plants;
+    // Text sits over the sky, so it takes its contrast from the sky, not from
+    // the page background or the clock.
+    final ink = gardenInkOn(context, now);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.md,
+        AppSpacing.page,
+        0,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        child: DecoratedBox(
+          decoration: BoxDecoration(boxShadow: cyaShadow(context)),
+          child: Stack(
+            children: <Widget>[
+              Positioned.fill(
+                child: GardenSceneView(
+                  plants: plants,
+                  height: 260,
+                  now: now,
+                  plantScale: 1.7,
+                ),
+              ),
+              // Reserves the Stack's height and carries the copy.
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
+                child: SizedBox(
+                  height: 260 - AppSpacing.xl * 2,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Memory Garden',
+                        style: theme.textTheme.headlineMedium?.copyWith(
+                          color: ink,
+                        ),
+                      ),
+                      const SizedBox(height: AppSpacing.xs),
+                      FadingText(
+                        scene.isEmpty
+                            ? 'Every promise you keep grows something here.'
+                            : scene.thisWeekGrowths == 0
+                            ? 'Nothing new this week — the garden is still yours.'
+                            : scene.thisWeekGrowths == 1
+                            ? 'One new growth this week.'
+                            : '${scene.thisWeekGrowths} new growths this week.',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: ink.withValues(alpha: 0.78),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GardenStats extends StatelessWidget {
+  const _GardenStats({required this.scene});
 
   final GardenScene scene;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        AppSpacing.lg,
+        AppSpacing.page,
+        0,
+      ),
+      child: Row(
         children: <Widget>[
-          Text('Memory Garden', style: theme.textTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(
-            scene.isEmpty
-                ? 'Every promise you keep grows something here.'
-                : '${scene.totalGrowths} promises kept, and counting.',
-            style: theme.textTheme.bodyMedium,
+          Expanded(
+            child: _GardenStat(
+              value: scene.totalGrowths,
+              label: 'kept, all time',
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: _GardenStat(
-                  value: '${scene.thisWeekGrowths}',
-                  label: 'this week',
-                  emoji: '🌱',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _GardenStat(
-                  value: '${scene.streakDays}',
-                  label: scene.streakDays == 1 ? 'day streak' : 'day streak',
-                  emoji: '🔥',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _GardenStat(
-                  value: '${scene.totalGrowths}',
-                  label: 'all time',
-                  emoji: '🪴',
-                ),
-              ),
-            ],
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: _GardenStat(
+              value: scene.streakDays,
+              label: 'day streak',
+              emphasise: scene.streakDays > 0,
+            ),
           ),
         ],
       ),
@@ -106,142 +199,99 @@ class _GardenStat extends StatelessWidget {
   const _GardenStat({
     required this.value,
     required this.label,
-    required this.emoji,
+    this.emphasise = false,
   });
 
-  final String value;
+  final int value;
   final String label;
-  final String emoji;
+  final bool emphasise;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cya = context.cyaColors;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
+      padding: const EdgeInsets.symmetric(
+        vertical: AppSpacing.lg,
+        horizontal: AppSpacing.lg,
+      ),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cya.surface2),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(emoji, style: const TextStyle(fontSize: 20)),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: theme.textTheme.titleLarge?.copyWith(
-              color: theme.colorScheme.primary,
+          AnimatedCounter(
+            value: value,
+            style: theme.textTheme.displaySmall?.copyWith(
+              color: emphasise ? cya.warningInk : theme.colorScheme.primary,
             ),
           ),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.labelSmall,
-          ),
+          Text(label, style: theme.textTheme.labelMedium),
         ],
       ),
     );
   }
 }
 
-/// One week's bed. The plants animate in once, then the scene is static —
-/// nothing repaints until the garden actually changes (PRD §9.1).
-class _BedCard extends StatefulWidget {
-  const _BedCard({required this.bed, required this.now});
+/// One past week: a strip of soil, still, with its plants exactly as they grew.
+class _HistoryBed extends StatelessWidget {
+  const _HistoryBed({required this.bed, required this.now});
 
   final GardenBed bed;
   final DateTime now;
 
   @override
-  State<_BedCard> createState() => _BedCardState();
-}
-
-class _BedCardState extends State<_BedCard>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 700),
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final plants = widget.bed.plants;
-    final rows = (plants.length / 9).ceil().clamp(1, 6);
-    // Reduced motion: plants are simply there, fully grown (PRD §8.3).
-    final calm = MediaQuery.disableAnimationsOf(context);
+    final plants = bed.plants;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: <Color>[
-              const Color(0xFFA7D7C5).withValues(alpha: 0.35),
-              const Color(0xFF74B69D).withValues(alpha: 0.18),
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.page,
+        0,
+        AppSpacing.page,
+        AppSpacing.md,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: <Widget>[
+              Text(
+                _weekLabel(bed.weekStart, now),
+                style: theme.textTheme.titleSmall,
+              ),
+              Text(
+                plants.length == 1 ? '1 growth' : '${plants.length} growths',
+                style: theme.textTheme.labelMedium,
+              ),
             ],
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: <Widget>[
-                Text(
-                  _weekLabel(widget.bed.weekStart, widget.now),
-                  style: theme.textTheme.titleSmall,
-                ),
-                Text(
-                  plants.length == 1 ? '1 growth' : '${plants.length} growths',
-                  style: theme.textTheme.labelMedium,
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            RepaintBoundary(
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) => CustomPaint(
-                  size: Size(double.infinity, 60.0 + (rows - 1) * 26),
-                  painter: GardenBedPainter(
-                    plants: plants,
-                    soil: const Color(0xFF8D6E4F).withValues(alpha: 0.45),
-                    palette: const <Color>[
-                      Color(0xFF2E705B),
-                      Color(0xFF74B69D),
-                      Color(0xFFA7D7C5),
-                      Color(0xFF16A34A),
-                      Color(0xFF4D9A7C),
-                    ],
-                    growthScale: calm
-                        ? 1
-                        : Curves.easeOutBack
-                              .transform(_controller.value)
-                              .clamp(0.0, 1.0),
+          const SizedBox(height: AppSpacing.sm),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: ColoredBox(
+              color: context.cyaColors.surface2,
+              child: LayoutBuilder(
+                builder: (context, constraints) => GardenSceneView(
+                  plants: plants,
+                  height: gardenSceneHeight(
+                    plants.length,
+                    constraints.maxWidth,
+                    base: 76,
                   ),
+                  now: now,
+                  showSky: false,
+                  animateWind: false,
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -253,28 +303,30 @@ class _EmptyGarden extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(36),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            const Text('🪴', style: TextStyle(fontSize: 48)),
-            const SizedBox(height: 14),
-            Text(
-              'Bare soil, for now',
-              style: theme.textTheme.titleMedium,
-              textAlign: TextAlign.center,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.section,
+        AppSpacing.xxl,
+        AppSpacing.section,
+        0,
+      ),
+      child: Column(
+        children: <Widget>[
+          Text(
+            'Bare soil, for now',
+            style: theme.textTheme.headlineSmall,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            'Keep a promise and the first thing grows here. '
+            'Nothing you capture is wasted.',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: context.cyaColors.textSecondary,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Keep a promise and the first thing grows here. '
-              'Nothing you capture is wasted.',
-              style: theme.textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

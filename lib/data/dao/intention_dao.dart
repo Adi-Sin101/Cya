@@ -245,6 +245,7 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
       final id = await into(intentions).insert(
         IntentionsCompanion.insert(
           sourceApp: capture.sourceApp,
+          sourcePackage: Value(capture.sourcePackage),
           rawContent: capture.rawContent,
           snippet: Value(capture.snippet),
           deepLink: Value(capture.deepLink),
@@ -365,6 +366,62 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
         type: IntentionEventType.edited,
         occurredAt: at,
         metadata: '{"change":"category"}',
+      );
+    });
+  }
+
+  /// Promises enrichment has not looked at yet (PRD §5.5).
+  ///
+  /// "Not looked at" is `category IS NULL AND extracted_deadline IS NULL` —
+  /// a promise the user categorised by hand is excluded for free, which is
+  /// what stops a startup pass from ever second-guessing them.
+  ///
+  /// Bounded, because this runs on every launch and an unbounded scan of a
+  /// years-old table to re-check rows that matched nothing the first time is
+  /// exactly the kind of waste PRD §9.4 rules out. Newest first: a promise
+  /// captured minutes ago is the one whose reminder is still worth moving.
+  Future<List<Intention>> needingEnrichment({int limit = 60}) async {
+    final rows =
+        await (select(intentions)
+              ..where((t) => t.category.isNull() & t.extractedDeadline.isNull())
+              ..orderBy(<OrderClauseGenerator<$IntentionsTable>>[
+                (t) => OrderingTerm.desc(t.id),
+              ])
+              ..limit(limit))
+            .get();
+    return <Intention>[for (final row in rows) row.toEntity()];
+  }
+
+  /// Records what on-device enrichment found (PRD §5.5).
+  ///
+  /// [reminderAt] is only passed when enrichment has earned the right to move
+  /// the alarm — the caller decides that, not this DAO. The event names the
+  /// change as `enrichment` so the log can always tell an automatic edit from
+  /// one the user made (PRD §7.1).
+  Future<void> recordExtractedDeadline(
+    int id, {
+    required DateTime deadline,
+    required DateTime? reminderAt,
+    required DateTime at,
+  }) {
+    return transaction(() async {
+      await (update(intentions)..where((t) => t.id.equals(id))).write(
+        IntentionsCompanion(
+          extractedDeadline: Value(deadline),
+          reminderAt: reminderAt == null
+              ? const Value.absent()
+              : Value(reminderAt),
+          updatedAt: Value(at),
+        ),
+      );
+      await _logEvent(
+        intentionId: id,
+        type: IntentionEventType.edited,
+        occurredAt: at,
+        metadata:
+            '{"change":"enrichment","deadline":'
+            '${deadline.millisecondsSinceEpoch ~/ 1000}'
+            '${reminderAt == null ? '' : ',"rescheduled":true'}}',
       );
     });
   }

@@ -5,21 +5,25 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/result.dart';
 import '../../../core/router/route_paths.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../domain/entities/intention.dart';
+import '../../../domain/projections/garden_projection.dart';
 import '../../providers/intention_providers.dart';
 import '../../providers/settings_providers.dart';
+import '../../widgets/motion/entrance.dart';
+import '../../widgets/motion/reward_burst.dart';
 import 'widgets/home_greeting_header.dart';
-import 'widgets/memory_garden_preview.dart';
 import 'widgets/promise_list_section.dart';
 import 'widgets/reminder_health_banner.dart';
 import 'widgets/today_card.dart';
-import 'widgets/week_stats_section.dart';
+import 'widgets/week_card.dart';
 
 /// The Home screen (PRD §8.2), reactive over the local store (§3.3).
 ///
-/// Every section is its own `Consumer` so a write only rebuilds the part it
-/// touches — the greeting does not repaint because a promise was ticked
-/// (PRD §9.1).
+/// Four blocks, in the order a glance wants them: who you are, what today is,
+/// what today holds, how the week is going. Every section is its own
+/// `Consumer` so a write only rebuilds the part it touches — the greeting does
+/// not repaint because a promise was ticked (PRD §9.1).
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -28,18 +32,27 @@ class HomeScreen extends StatelessWidget {
     return SafeArea(
       bottom: false,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 130),
-        children: const <Widget>[
-          _GreetingSection(),
-          SizedBox(height: 20),
-          ReminderHealthBanner(),
-          _TodaySection(),
-          SizedBox(height: 24),
-          _PromisesSection(),
-          SizedBox(height: 24),
-          _GardenSection(),
-          SizedBox(height: 16),
-          _WeekSection(),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          AppSpacing.md,
+          AppSpacing.page,
+          AppSpacing.navClearance,
+        ),
+        children: <Widget>[
+          const Entrance(child: _GreetingSection()),
+          const SizedBox(height: AppSpacing.xl),
+          const ReminderHealthBanner(),
+          const Entrance(
+            delay: Duration(milliseconds: 70),
+            child: _TodaySection(),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
+          const _PromisesSection(),
+          const SizedBox(height: AppSpacing.xxl),
+          const Entrance(
+            delay: Duration(milliseconds: 140),
+            child: _WeekSection(),
+          ),
         ],
       ),
     );
@@ -93,25 +106,24 @@ class _PromisesSection extends ConsumerWidget {
   }
 
   Future<void> _toggle(BuildContext context, WidgetRef ref, int id) async {
+    // Read before the write, so we know which direction the toggle went and
+    // can celebrate only the direction worth celebrating.
+    final before = ref.read(todayIntentionsProvider).valueOrNull;
+    final wasResolved =
+        before?.where((p) => p.id == id).firstOrNull?.isResolved ?? false;
+
     final result = await ref.read(resolveIntentionProvider).toggle(id);
     if (!context.mounted) return;
+
     if (result.errorOrNull case final AppError error) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(error.message)));
+      return;
     }
-  }
-}
-
-class _GardenSection extends ConsumerWidget {
-  const _GardenSection();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return GestureDetector(
-      onTap: () => context.go(RoutePaths.garden),
-      child: MemoryGardenPreview(garden: ref.watch(gardenSummaryProvider)),
-    );
+    // Keeping a promise is the moment the whole product exists for. Undoing
+    // one is not (PRD §8.3, ADR-007).
+    if (!wasResolved) showRewardBurst(context, seed: id);
   }
 }
 
@@ -120,7 +132,15 @@ class _WeekSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return WeekStatsSection(stats: ref.watch(weekStatsProvider));
+    final scene = ref.watch(gardenSceneProvider);
+    return WeekCard(
+      stats: ref.watch(weekStatsProvider),
+      plants: scene.beds.isEmpty
+          ? const <GardenPlant>[]
+          : scene.beds.last.plants,
+      now: ref.watch(clockProvider)(),
+      onTap: () => context.go(RoutePaths.garden),
+    );
   }
 }
 
@@ -145,10 +165,10 @@ class _SectionError extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
         color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Text(
         "Couldn't load your promises.\n$message",

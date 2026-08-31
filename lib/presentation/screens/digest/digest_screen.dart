@@ -5,10 +5,15 @@ import 'package:go_router/go_router.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/result.dart';
 import '../../../core/router/route_paths.dart';
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/cya_colors_extension.dart';
 import '../../../domain/entities/intention.dart';
 import '../../../domain/enums/intention_status.dart';
 import '../../../domain/policies/snooze_policy.dart';
 import '../../providers/intention_providers.dart';
+import '../../widgets/motion/entrance.dart';
+import '../../widgets/motion/reward_burst.dart';
 import '../home/widgets/promise_tile.dart';
 
 /// The weekly review (PRD §5.6) — and the home escalation's third rung points
@@ -40,35 +45,42 @@ class DigestScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Your week')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          AppSpacing.sm,
+          AppSpacing.page,
+          AppSpacing.section,
+        ),
         children: <Widget>[
-          _KeptCard(kept: week.completed, captured: week.captured),
-          const SizedBox(height: 24),
+          Entrance(
+            child: _KeptCard(kept: week.completed, captured: week.captured),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
           if (stalled.isNotEmpty) ...<Widget>[
             Text('Time to decide', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 4),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               "You've pushed these back as far as I'll let you. "
               'Finish them, or let them go — both are fine.',
-              style: theme.textTheme.bodySmall,
+              style: theme.textTheme.bodyMedium,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             for (final promise in stalled)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: PromiseTile(
                   key: ValueKey<int>(promise.id),
                   promise: promise,
                   now: now,
-                  onToggle: () => _toggle(context, ref, promise.id),
+                  onToggle: () => _toggle(context, ref, promise),
                   onTap: () =>
                       context.push(RoutePaths.promiseDetail(promise.id)),
                 ),
               ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
           ],
           Text('Still waiting', style: theme.textTheme.titleLarge),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           if (waiting.isEmpty)
             Text(
               'Nothing is waiting. That is a rare and good thing.',
@@ -77,28 +89,28 @@ class DigestScreen extends ConsumerWidget {
           else
             for (final promise in waiting)
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: PromiseTile(
                   key: ValueKey<int>(promise.id),
                   promise: promise,
                   now: now,
-                  onToggle: () => _toggle(context, ref, promise.id),
+                  onToggle: () => _toggle(context, ref, promise),
                   onTap: () =>
                       context.push(RoutePaths.promiseDetail(promise.id)),
                 ),
               ),
           if (kept.isNotEmpty) ...<Widget>[
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xxl),
             Text('Kept', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             for (final promise in kept.take(10))
               Padding(
-                padding: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
                 child: PromiseTile(
                   key: ValueKey<int>(promise.id),
                   promise: promise,
                   now: now,
-                  onToggle: () => _toggle(context, ref, promise.id),
+                  onToggle: () => _toggle(context, ref, promise),
                   onTap: () =>
                       context.push(RoutePaths.promiseDetail(promise.id)),
                 ),
@@ -109,14 +121,21 @@ class DigestScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _toggle(BuildContext context, WidgetRef ref, int id) async {
-    final result = await ref.read(resolveIntentionProvider).toggle(id);
+  Future<void> _toggle(
+    BuildContext context,
+    WidgetRef ref,
+    Intention promise,
+  ) async {
+    final wasResolved = promise.isResolved;
+    final result = await ref.read(resolveIntentionProvider).toggle(promise.id);
     if (!context.mounted) return;
     if (result.errorOrNull case final AppError error) {
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(error.message)));
+      return;
     }
+    if (!wasResolved) showRewardBurst(context, seed: promise.id);
   }
 }
 
@@ -130,19 +149,23 @@ class _KeptCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        // Sage through most of the card so the white copy keeps a 5.9:1 field
+        // (PRD §8.4); the soft-sage end carries no text.
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: <Color>[Color(0xFF2E705B), Color(0xFF74B69D)],
+          colors: <Color>[AppColors.sage, AppColors.sage, AppColors.softSage],
+          stops: <double>[0, 0.55, 1],
         ),
+        boxShadow: cyaShadow(context),
       ),
       child: Row(
         children: <Widget>[
-          const Text('🦫', style: TextStyle(fontSize: 34)),
-          const SizedBox(width: 14),
+          const Text('🦫', style: TextStyle(fontSize: 38)),
+          const SizedBox(width: AppSpacing.lg),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,13 +180,13 @@ class _KeptCard extends StatelessWidget {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs + 2),
                 Text(
                   kept == 0
                       ? "Nothing finished — and nothing lost. I still have it all."
                       : 'out of $captured you captured this week.',
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: Colors.white70,
+                    color: Colors.white.withValues(alpha: 0.88),
                   ),
                 ),
               ],

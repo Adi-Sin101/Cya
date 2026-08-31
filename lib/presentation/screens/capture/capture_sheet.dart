@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/cya_colors_extension.dart';
+import '../../../core/utils/cya_haptics.dart';
 import '../../../core/utils/reminder_format.dart';
 import '../../../domain/enums/reminder_preset.dart';
 import '../../../domain/usecases/capture_intention.dart';
@@ -17,7 +18,6 @@ Future<void> showCaptureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    showDragHandle: true,
     builder: (_) => const CaptureSheet(),
   );
 }
@@ -55,119 +55,122 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cya = context.cyaColors;
     final now = ref.watch(clockProvider)();
     final reminderAt = _customReminder ?? _preset.resolve(now);
+    final canSave = _controller.text.trim().isNotEmpty && !_saving;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        20,
-        4,
-        20,
-        20 + MediaQuery.viewInsetsOf(context).bottom,
+        AppSpacing.page,
+        AppSpacing.xs,
+        AppSpacing.page,
+        AppSpacing.xl + MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            'What do you want to save for later?',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "Paste, write, or dictate it. I'll bring it back.",
-            style: theme.textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _controller,
-            focusNode: _focusNode,
-            maxLines: 4,
-            minLines: 3,
-            textCapitalization: TextCapitalization.sentences,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              hintText: 'Reply to Sarah about the trip…',
-              filled: true,
-              fillColor: cya.surface2,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              'What do you want to save for later?',
+              style: theme.textTheme.headlineSmall,
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              "Paste, write, or dictate it. I'll bring it back.",
+              style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextField(
+              controller: _controller,
+              focusNode: _focusNode,
+              maxLines: 4,
+              minLines: 3,
+              style: theme.textTheme.bodyLarge,
+              textCapitalization: TextCapitalization.sentences,
+              onChanged: (_) => setState(() {}),
+              decoration: const InputDecoration(
+                hintText: 'Reply to Sarah about the trip…',
               ),
             ),
-          ),
-          const SizedBox(height: 20),
-          Text('When should I remind you?', style: theme.textTheme.titleMedium),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: <Widget>[
-              for (final preset in ReminderPreset.values)
-                ChoiceChip(
-                  label: Text(preset.label),
-                  selected: _customReminder == null && _preset == preset,
-                  onSelected: (_) => setState(() {
-                    _preset = preset;
-                    _customReminder = null;
-                  }),
-                ),
-              ActionChip(
-                avatar: const Icon(Icons.event_rounded, size: 16),
-                label: Text(
-                  _customReminder == null
-                      ? 'Pick Date'
-                      : formatDay(_customReminder!),
-                ),
-                onPressed: _pickDate,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: <Widget>[
-              Icon(
-                Icons.schedule_rounded,
-                size: 16,
-                color: theme.colorScheme.secondary,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Back at ${formatDay(reminderAt)} · '
-                '${formatTimeOfDay(reminderAt)}',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: _controller.text.trim().isEmpty || _saving
-                  ? null
-                  : _save,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: _saving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Text('Save to Cya! ✨'),
+            const SizedBox(height: AppSpacing.xl),
+            Text(
+              'When should I remind you?',
+              style: theme.textTheme.titleMedium,
             ),
-          ),
-        ],
+            const SizedBox(height: AppSpacing.md),
+            Wrap(
+              spacing: AppSpacing.sm + 2,
+              runSpacing: AppSpacing.sm + 2,
+              children: <Widget>[
+                for (final preset in ReminderPreset.values)
+                  ChoiceChip(
+                    label: Text(preset.label),
+                    selected: _customReminder == null && _preset == preset,
+                    onSelected: (_) {
+                      CyaHaptics.selection(context);
+                      setState(() {
+                        _preset = preset;
+                        _customReminder = null;
+                      });
+                    },
+                  ),
+                ActionChip(
+                  avatar: const Icon(Icons.event_rounded, size: 18),
+                  label: Text(
+                    _customReminder == null
+                        ? 'Pick date'
+                        : formatDay(_customReminder!),
+                  ),
+                  onPressed: _pickDate,
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            Row(
+              children: <Widget>[
+                Icon(
+                  Icons.schedule_rounded,
+                  size: 18,
+                  color: theme.colorScheme.primary,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
+                  child: Text(
+                    'Back at ${formatDay(reminderAt)} · '
+                    '${formatTimeOfDay(reminderAt)}',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: context.cyaColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.xl),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: canSave ? _save : null,
+                child: _saving
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.5,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Save to Cya! ✨'),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Future<void> _pickDate() async {
+    CyaHaptics.tap(context);
     final now = ref.read(clockProvider)();
     final date = await showDatePicker(
       context: context,
@@ -207,7 +210,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
 
     result.fold(
       (_) {
-        HapticFeedback.lightImpact();
+        CyaHaptics.confirm(context);
         // The promise is saved either way; this only decides whether Cya! may
         // knock (PRD §3.5 — asked here, where the reason is on screen).
         ref.read(reminderPortProvider).ensureNotificationPermission();
@@ -219,6 +222,7 @@ class _CaptureSheetState extends ConsumerState<CaptureSheet> {
           );
       },
       (error) {
+        CyaHaptics.warn(context);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(SnackBar(content: Text(error.message)));

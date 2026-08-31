@@ -540,3 +540,58 @@ Format for each entry:
   not "the widget works", and writing it down as the former keeps the next session honest.
 - Next: enrichment (PRD §5.5) — on-device date extraction (ML Kit) and rule-based
   auto-categorization, both strictly off the capture path.
+
+## 2026-08-31 — Iteration 8: typography, motion, the garden, and the rest of Phase 2
+- Plan: plans/iteration-6-typography-motion-garden.md
+- Goal: the app was functionally complete and read like a spreadsheet with a good data model behind
+  it. Make it feel like the product the PRD describes, then finish what was left.
+- Done:
+  - **Design system.** Type scale roughly +40% across the board (display 44/36, headline 30/26/22,
+    body 18/16/14) with optical tracking on the large end. `AppMotion` (durations + curves),
+    `AppSpacing`/`AppRadius`/`AppTouch`, and `CyaHaptics` — a five-entry haptic *vocabulary*, so a
+    buzz means something. Component themes sized to the scale rather than to Material's defaults.
+  - **Contrast (ADR-009).** The §8.1 status colours fail as text: amber on white is 2.2:1. Split
+    them into fills (unchanged §8.1 values) and inks. Dark mode promotes Soft Sage to `primary`,
+    because Sage on the dark background is 2.9:1. The Today card's gradient was rebalanced — white
+    on mint was 1.6:1 and the ring was invisible; sage now holds the first 45% and the ring is deep
+    ink.
+  - **Edge-to-edge.** The app paints under the status and navigation bars, with the bar icons
+    following the resolved theme. No more black seam at the top.
+  - **Garden rewrite.** One `GardenScenePainter`: a sky that darkens with the actual hour, sun or
+    moon and stars, two parallax hill bands, textured soil, ground shadows, 8 species, wind sway,
+    fireflies at night. The screen now has one focal point — this week as a full landscape — with
+    older weeks as quiet soil strips beneath.
+  - **Declutter.** Home 6 blocks → 4 (level inlined under the greeting; the garden teaser and the
+    week stats merged into one `WeekCard`, because they answer the same question). Promises: three
+    filter chips over seven category chips → one segmented row plus a filter button. Detail: the
+    7-chip category grid → one row and a sheet, and the three loop-closing actions moved *above*
+    the supporting cards.
+  - **Reward moments (ADR-007).** Flutter particle bursts instead of Rive.
+  - **Real source-app icons.** Schema **v2** adds `intentions.source_package`; the capture path
+    records the sharing app's package, and an `appIcon` channel hands back its launcher icon.
+    Unknown sources fall back to the mascot rather than a grey bookmark.
+  - **Enrichment (ADR-008).** Rule-based date extraction + auto-categorization, run after startup,
+    never on the capture path, never over the top of a user's choice.
+  - **Midnight rollover, real "Open in <app>", a display-name setting, `applicationId` →
+    `dev.cya.app`.**
+- Verified / working: `flutter analyze` 0 · `flutter test` **121/121**. On an API 34 emulator:
+  share-sheet capture 37–120 ms under the new package; schema v2 migrated a live v1 database with
+  no data loss; Chrome and Settings launcher icons render in the list; a natively captured
+  "Call the plumber tomorrow at 9am" was untouched at capture time and then categorised `reply`
+  and rescheduled to 09:00 on app open; the whole loop verified on a **release** build.
+  Release APK 63.4 MB → **20.8 MB**.
+- Broke / deferred:
+  - **[L-004]** The ambient animations hung twenty widget tests — `pumpAndSettle` cannot return
+    while a controller repeats. Deleted the FAB's decorative loop and confined the wind to the
+    Garden hero. The test hang was the design telling the truth about a battery cost.
+  - **[L-005]** Enrichment moved `reminder_at` without re-arming AlarmManager. Caught by reading
+    the device DB, not by a test — the resume-time `rescheduleAll()` was hiding it.
+  - The home-screen widget **still** has not been seen on a launcher.
+  - Golden tests are still not written; the reduced-motion and rollover tests landed instead.
+  - Release still signs with the debug key.
+- Lesson / rule: two of the three real bugs this session were found by reading the device's SQLite
+  back, and none of them by a green test suite. Keep doing that after any change that crosses the
+  Dart/Kotlin boundary. And treat a test that suddenly hangs as a design signal before treating it
+  as a test problem.
+- Next: place the widget on a launcher and settle §13.1's last ⚠️; a release keystore; golden tests
+  for the core screens in both themes; then iOS, which has no native side at all.

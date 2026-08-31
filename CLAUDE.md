@@ -13,17 +13,22 @@ is [docs/Cya_Master_PRD_and_Development_Bible.md](docs/Cya_Master_PRD_and_Develo
 It is the **bible**. Read it before non-trivial work. If a requirement here conflicts with what
 you're about to do, **stop and flag it** rather than silently diverging.
 
-> Current state (2026-08-31): **Phase 0 is complete.** Riverpod + go_router + the designed Home,
-> Promises, Promise Detail and Profile screens are reactive over a **Drift** store
-> (`intentions` + append-only `intention_events` + `preferences` + an FTS5 search index), and the
+> Current state (2026-08-31): **Phases 0 and 1 are complete; Phase 2 enrichment has landed.**
+> Riverpod + go_router + the designed screens are reactive over a **Drift** store (`intentions` +
+> append-only `intention_events` + `preferences` + an FTS5 search index, **schema v2**), and the
 > **native-thin Share Sheet capture path** writes to that same SQLite file from Kotlin with no
-> Flutter engine (762 ms cold, 117 ms warm on an API 34 emulator). Reminder scheduling
-> (`AlarmManager`), notifications with one-tap Done/Snooze, escalation tiers and boot rescheduling
-> are in — see `plans/BUILD_LOG.md` for what is verified and what is not.
+> Flutter engine (37–120 ms). Reminders (`AlarmManager`), notifications with one-tap Done/Snooze,
+> escalation tiers, boot rescheduling, the weekly digest, the Quick Settings Tile, the home-screen
+> widget, Memory Garden, achievements, categories and FTS search are all in. Iteration 8 rebuilt
+> the design system (larger type scale, motion + haptic tokens, edge-to-edge, contrast inks), the
+> Memory Garden (a painted, time-of-day scene), and added on-device enrichment, midnight rollover
+> and real source-app icons. `applicationId` is **`dev.cya.app`**.
+> `flutter analyze` 0 · `flutter test` 121/121. See `plans/BUILD_LOG.md` for what is verified.
 >
-> Not yet built: Memory Garden and Achievements screens (placeholders), Rive reward animations,
-> the weekly digest, enrichment (on-device date extraction, auto-categorization), Quick Settings
-> Tile, home-screen widget, and iOS. `freezed` is deliberately **not** used — see ADR-003.
+> Not yet done: the home-screen widget has **never been seen on a launcher** (⚠️ in PRD §13.1);
+> no release keystore (release signs with the debug key); no golden tests; iOS has no native side
+> at all. `freezed` is deliberately **not** used — see ADR-003. Reward animations are Flutter
+> particle bursts, not Rive — ADR-007.
 > Two contracts to respect before touching data or native code:
 > [docs/native_db_contract.md](docs/native_db_contract.md) (the schema both runtimes write) and the
 > ADR log in PRD §13.3.

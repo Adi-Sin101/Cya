@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/theme/cya_colors_extension.dart';
 import '../../../../domain/models/user_level.dart';
 import 'level_badge.dart';
 
-/// Time-aware greeting + level badge at the top of Home (PRD §8.2).
+/// Time-aware greeting + level at the top of Home (PRD §8.2).
+///
+/// The level used to be a bordered card competing with the Today hero
+/// immediately below it. It is now a line under the greeting: still visible
+/// every session, no longer arguing for the same attention as the one thing
+/// the screen is about.
 class HomeGreetingHeader extends StatelessWidget {
   const HomeGreetingHeader({
     super.key,
@@ -26,15 +33,17 @@ class HomeGreetingHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Text(
-          name == null || name.isEmpty ? '$greeting 👋' : '$greeting, $name 👋',
-          style: theme.textTheme.headlineMedium,
+          name == null || name.isEmpty ? greeting : '$greeting, $name',
+          style: theme.textTheme.displaySmall,
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: AppSpacing.xs),
         Text(
-          'Future you is proud of today.',
-          style: theme.textTheme.bodyMedium,
+          _encouragement(now.hour),
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: context.cyaColors.textSecondary,
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
         LevelBadge(level: level),
       ],
     );
@@ -42,7 +51,16 @@ class HomeGreetingHeader extends StatelessWidget {
 }
 
 String _greeting(int hour) {
-  if (hour < 12) return 'Good Morning';
-  if (hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/// The line under the greeting changes with the hour, so the app does not
+/// greet a 6am start the same way it greets an 11pm one.
+String _encouragement(int hour) {
+  if (hour < 12) return 'A clean slate. Let’s keep a few.';
+  if (hour < 17) return 'Future you is proud of today.';
+  if (hour < 22) return 'Wind down. Whatever’s left, I’ll hold.';
+  return 'Late one. I’ll still be here tomorrow.';
 }

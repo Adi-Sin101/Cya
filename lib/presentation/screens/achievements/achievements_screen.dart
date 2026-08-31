@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_motion.dart';
+import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/cya_colors_extension.dart';
 import '../../../domain/projections/achievement_projection.dart';
 import '../../providers/intention_providers.dart';
+import '../../widgets/motion/entrance.dart';
 
 /// Achievements (PRD §6.6, §8.2): a grid of badges with locked/unlocked states.
 ///
@@ -23,27 +27,36 @@ class AchievementsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(title: const Text('Achievements')),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: const EdgeInsets.fromLTRB(
+          AppSpacing.page,
+          AppSpacing.sm,
+          AppSpacing.page,
+          AppSpacing.section,
+        ),
         children: <Widget>[
           Text(
             unlocked == 0
                 ? 'Nothing unlocked yet — the first one is one promise away.'
                 : '$unlocked of ${achievements.length} unlocked.',
-            style: theme.textTheme.bodyMedium,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: context.cyaColors.textSecondary,
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: AppSpacing.xl),
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 0.82,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
+              childAspectRatio: 0.78,
             ),
             itemCount: achievements.length,
-            itemBuilder: (context, index) =>
-                _AchievementCard(achievement: achievements[index]),
+            itemBuilder: (context, index) => Entrance(
+              delay: Duration(milliseconds: 50 * index),
+              child: _AchievementCard(achievement: achievements[index]),
+            ),
           ),
         ],
       ),
@@ -61,77 +74,90 @@ class _AchievementCard extends StatelessWidget {
     final theme = Theme.of(context);
     final cya = context.cyaColors;
     final unlocked = achievement.isUnlocked;
+    // The unlocked fill is mint in both themes, so its foreground is deep ink
+    // in both themes — `onSurface` would be white-on-mint in dark (PRD §8.4).
+    final ink = unlocked ? AppColors.deepInk : theme.colorScheme.onSurface;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
+    return AnimatedContainer(
+      duration: AppMotion.of(context, AppMotion.gentle),
+      curve: AppMotion.standard,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
         color: unlocked ? null : theme.colorScheme.surface,
         gradient: unlocked
             ? const LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: <Color>[Color(0xFFA7D7C5), Color(0xFF74B69D)],
+                colors: <Color>[AppColors.mint, AppColors.softSage],
               )
             : null,
-        border: Border.all(color: unlocked ? Colors.transparent : cya.surface2),
+        border: Border.all(
+          color: unlocked
+              ? Colors.transparent
+              : theme.colorScheme.outlineVariant,
+        ),
+        boxShadow: unlocked ? cyaShadow(context, elevation: 0.6) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Opacity(
-            opacity: unlocked ? 1 : 0.35,
+            opacity: unlocked ? 1 : 0.3,
             child: Text(
               achievement.emoji,
-              style: const TextStyle(fontSize: 30),
+              style: const TextStyle(fontSize: 34),
             ),
           ),
           const Spacer(),
           Text(
             achievement.name,
-            style: theme.textTheme.titleSmall?.copyWith(
-              color: unlocked ? const Color(0xFF14532D) : null,
-            ),
+            style: theme.textTheme.titleSmall?.copyWith(color: ink),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Text(
             achievement.description,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
               color: unlocked
-                  ? const Color(0xFF14532D).withValues(alpha: 0.85)
-                  : null,
+                  ? AppColors.deepInk.withValues(alpha: 0.85)
+                  : cya.textSecondary,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: AppSpacing.md),
           if (unlocked)
             Row(
               children: <Widget>[
                 const Icon(
                   Icons.check_circle_rounded,
-                  size: 16,
-                  color: Color(0xFF14532D),
+                  size: 18,
+                  color: AppColors.deepInk,
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: AppSpacing.xs + 2),
                 Text(
                   'Unlocked',
                   style: theme.textTheme.labelMedium?.copyWith(
-                    color: const Color(0xFF14532D),
+                    color: AppColors.deepInk,
                   ),
                 ),
               ],
             )
           else ...<Widget>[
             ClipRRect(
-              borderRadius: BorderRadius.circular(5),
-              child: LinearProgressIndicator(
-                value: achievement.fraction,
-                minHeight: 6,
-                backgroundColor: cya.surface2,
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: achievement.fraction),
+                duration: AppMotion.of(context, AppMotion.slow),
+                curve: AppMotion.enter,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 6,
+                  backgroundColor: cya.surface2,
+                ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: AppSpacing.xs + 2),
             Text(
               '${achievement.progress} / ${achievement.target}',
               style: theme.textTheme.labelSmall,
