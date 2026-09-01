@@ -12,6 +12,7 @@ import '../../domain/usecases/capture_intention.dart';
 import '../../domain/usecases/enrich_intention.dart';
 import '../../domain/usecases/manage_intention.dart';
 import '../../domain/usecases/resolve_intention.dart';
+import '../../domain/usecases/retire_stale_intentions.dart';
 import '../../domain/usecases/snooze_intention.dart';
 import '../../native/platform_reminder_scheduler.dart';
 import '../../native/reminder_port.dart';
@@ -95,6 +96,14 @@ final manageIntentionProvider = Provider<ManageIntention>(
   ),
 );
 
+final retireStaleIntentionsProvider = Provider<RetireStaleIntentions>(
+  (ref) => RetireStaleIntentions(
+    ref.watch(intentionRepositoryProvider),
+    ref.watch(clockProvider),
+    ref.watch(reminderSchedulerProvider),
+  ),
+);
+
 final _demoSeedProvider = Provider<DemoSeed>(
   (ref) => DemoSeed(
     ref.watch(intentionDaoProvider),
@@ -130,4 +139,16 @@ final enrichmentPassProvider = FutureProvider<int>((ref) async {
       .needingEnrichment();
   if (pending.isEmpty) return 0;
   return ref.watch(enrichIntentionProvider).run(pending);
+});
+
+/// Retires promises nothing has touched in a month (ADR-014).
+///
+/// Once per app start, behind enrichment, and never on the capture path. A
+/// sweep is one indexed query that usually matches nothing, so a timer or a
+/// background worker would be a whole scheduling surface for a job whose
+/// deadline is "eventually" — and the app is opened often enough that
+/// "eventually" arrives.
+final retirementPassProvider = FutureProvider<int>((ref) async {
+  await ref.watch(appStartupProvider.future);
+  return ref.watch(retireStaleIntentionsProvider).run();
 });

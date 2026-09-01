@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- What the export FileProvider is allowed to hand out (PRD 9.3).
+
+     Exactly one directory, and it is a cache directory. Sharing filesDir would
+     expose the live database file itself through a content Uri; sharing the
+     whole cache would expose anything else that happens to be in it. The
+     export is a copy made to be given away, so it lives somewhere that only
+     ever contains copies made to be given away. -->
+<paths>
+    <cache-path name="exports" path="exports/"/>
+</paths>

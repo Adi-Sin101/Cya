@@ -8,6 +8,7 @@ import '../../../core/router/route_paths.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/cya_colors_extension.dart';
+import '../../../core/utils/cya_haptics.dart';
 import '../../../domain/entities/intention.dart';
 import '../../../domain/enums/intention_status.dart';
 import '../../../domain/policies/snooze_policy.dart';
@@ -41,6 +42,12 @@ class DigestScreen extends ConsumerWidget {
     final kept = all
         .where((p) => p.status == IntentionStatus.resolved)
         .toList();
+    // Announced here and nowhere else (ADR-014). A promise that retired itself
+    // should be mentioned once, calmly, with a way back — not surfaced as a
+    // notification, which would make the quiet cleanup into another
+    // interruption.
+    final retired =
+        ref.watch(recentlyRetiredProvider).valueOrNull ?? const <Intention>[];
 
     return Scaffold(
       appBar: AppBar(title: const Text('Your week')),
@@ -99,6 +106,10 @@ class DigestScreen extends ConsumerWidget {
                       context.push(RoutePaths.promiseDetail(promise.id)),
                 ),
               ),
+          if (retired.isNotEmpty) ...<Widget>[
+            const SizedBox(height: AppSpacing.xxl),
+            _RetiredSection(promises: retired, now: now),
+          ],
           if (kept.isNotEmpty) ...<Widget>[
             const SizedBox(height: AppSpacing.xxl),
             Text('Kept', style: theme.textTheme.titleLarge),
@@ -193,6 +204,126 @@ class _KeptCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "12 promises quietly retired — tap to bring any back" (ADR-014).
+///
+/// Phrased as a report, not an apology, and placed below what is still waiting:
+/// this is housekeeping the app did so the list stays honest, and it is fully
+/// reversible. The count leads, because the point is that the backlog shrank.
+class _RetiredSection extends ConsumerWidget {
+  const _RetiredSection({required this.promises, required this.now});
+
+  final List<Intention> promises;
+  final DateTime now;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final count = promises.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Quietly retired', style: theme.textTheme.titleLarge),
+        const SizedBox(height: AppSpacing.xs),
+        Text(
+          count == 1
+              ? 'One promise sat untouched for a month, so I filed it away. '
+                    'Tap to bring it back.'
+              : '$count promises sat untouched for a month, so I filed them '
+                    'away. Tap any to bring it back.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        for (final promise in promises.take(10))
+          Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.md),
+            child: _RetiredTile(
+              key: ValueKey<int>(promise.id),
+              promise: promise,
+              onRestore: () => _restore(context, ref, promise),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _restore(
+    BuildContext context,
+    WidgetRef ref,
+    Intention promise,
+  ) async {
+    CyaHaptics.confirm(context);
+    // Reopening rather than un-archiving: the promise comes back as something
+    // due now, because a month-old reminder time would put it straight back on
+    // the path to retiring again.
+    final result = await ref
+        .read(manageIntentionProvider)
+        .reschedule(promise.id, ref.read(clockProvider)());
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            result.errorOrNull?.message ?? 'Back on the list. No hard feelings.',
+          ),
+        ),
+      );
+  }
+}
+
+class _RetiredTile extends StatelessWidget {
+  const _RetiredTile({super.key, required this.promise, required this.onRestore});
+
+  final Intention promise;
+  final VoidCallback onRestore;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: context.cyaColors.surface2,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onRestore,
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      promise.title,
+                      style: theme.textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'from ${promise.sourceApp}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: context.cyaColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Icon(
+                Icons.undo_rounded,
+                size: 20,
+                color: theme.colorScheme.primary,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

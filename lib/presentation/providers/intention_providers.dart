@@ -7,6 +7,7 @@ import '../../domain/enums/intention_event_type.dart';
 import '../../domain/models/garden_summary.dart';
 import '../../domain/models/user_level.dart';
 import '../../domain/models/week_stats.dart';
+import '../../domain/policies/aging_policy.dart';
 import '../../domain/projections/achievement_projection.dart';
 import '../../domain/projections/garden_projection.dart';
 import '../../domain/projections/week_projection.dart';
@@ -39,6 +40,23 @@ final todayIntentionsProvider = StreamProvider.autoDispose<List<Intention>>((
 final allIntentionsProvider = StreamProvider.autoDispose<List<Intention>>(
   (ref) => ref.watch(intentionRepositoryProvider).watchAllActive(),
 );
+
+/// Promises that retired themselves recently (ADR-014).
+///
+/// A fortnight's worth, not everything ever retired: the digest's offer is
+/// "did I get that wrong?", and a list going back years is a graveyard, not a
+/// question.
+final recentlyRetiredProvider = StreamProvider.autoDispose<List<Intention>>((
+  ref,
+) {
+  final now = ref.watch(clockProvider)();
+  return ref
+      .watch(intentionRepositoryProvider)
+      .watchRetiredSince(
+        now.subtract(const Duration(days: 14)),
+        AgingPolicy.reason,
+      );
+});
 
 final intentionByIdProvider = StreamProvider.autoDispose
     .family<Intention?, int>(

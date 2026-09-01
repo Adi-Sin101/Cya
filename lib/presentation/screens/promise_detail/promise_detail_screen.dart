@@ -17,6 +17,7 @@ import '../../widgets/motion/reward_burst.dart';
 import '../../widgets/source_avatar.dart';
 import '../home/widgets/reminder_chip.dart';
 import 'widgets/category_picker.dart';
+import 'widgets/reply_draft_card.dart';
 import 'widgets/snooze_sheet.dart';
 import 'widgets/why_this_matters_card.dart';
 
@@ -190,6 +191,10 @@ class _PromiseBody extends ConsumerWidget {
           },
         ),
         const SizedBox(height: AppSpacing.md),
+        if (!promise.isResolved && ReplyDraftCard.suits(promise)) ...<Widget>[
+          ReplyDraftCard(promise: promise),
+          const SizedBox(height: AppSpacing.md),
+        ],
         WhyThisMattersCard(promise: promise, now: now),
       ]),
     );

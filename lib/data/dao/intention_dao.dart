@@ -492,6 +492,123 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
     });
   }
 
+  // ------------------------------------------------- retirement (ADR-014)
+
+  /// Archives every pending promise untouched since [cutoff], returning their
+  /// ids so the caller can cancel their alarms.
+  ///
+  /// One transaction for the whole sweep: a half-retired batch would leave
+  /// alarms armed for rows the UI no longer shows. Each row still gets its own
+  /// `archived` event carrying [reason] — the log's job is to explain *why* a
+  /// promise ended, and "the calendar did it" is a different answer from "the
+  /// user did it" (PRD §7.1).
+  Future<List<int>> retireStale({
+    required DateTime cutoff,
+    required DateTime at,
+    required String reason,
+  }) {
+    return transaction(() async {
+      final stale =
+          await (select(intentions)
+                ..where(
+                  (t) =>
+                      t.status.isIn(<String>[
+                        IntentionStatus.open.wire,
+                        IntentionStatus.snoozed.wire,
+                      ]) &
+                      t.updatedAt.isSmallerOrEqualValue(cutoff),
+                ))
+              .get();
+      if (stale.isEmpty) return const <int>[];
+
+      for (final row in stale) {
+        await (update(intentions)..where((t) => t.id.equals(row.id))).write(
+          IntentionsCompanion(
+            status: Value(IntentionStatus.archived.wire),
+            updatedAt: Value(at),
+          ),
+        );
+        await _logEvent(
+          intentionId: row.id,
+          type: IntentionEventType.archived,
+          occurredAt: at,
+          metadata: '{"reason":"$reason"}',
+        );
+      }
+      return <int>[for (final row in stale) row.id];
+    });
+  }
+
+  /// Promises retired automatically since [since], newest first.
+  ///
+  /// Read from the event log rather than from a flag on the row, because the
+  /// log is the only place that remembers *why* something was archived — and
+  /// the digest's offer to bring one back depends on that distinction.
+  Stream<List<Intention>> watchRetiredSince(DateTime since, String reason) {
+    return customSelect(
+      'SELECT i.* FROM intentions i '
+      'JOIN intention_events e ON e.intention_id = i.id '
+      "WHERE i.status = 'archived' AND e.type = 'archived' "
+      'AND e.occurred_at >= ?1 '
+      "AND e.metadata LIKE '%\"reason\":\"' || ?2 || '\"%' "
+      'GROUP BY i.id ORDER BY e.occurred_at DESC',
+      variables: <Variable<Object>>[
+        Variable<int>(since.millisecondsSinceEpoch ~/ 1000),
+        Variable<String>(reason),
+      ],
+      readsFrom: <ResultSetImplementation<dynamic, dynamic>>{
+        intentions,
+        intentionEvents,
+      },
+    ).watch().map(
+      (rows) => <Intention>[
+        for (final row in rows) intentions.map(row.data).toEntity(),
+      ],
+    );
+  }
+
+  // ------------------------------------------------ export & erase (§9.3)
+
+  /// Every intention, archived ones included, oldest first.
+  ///
+  /// Export means *everything*: filtering here would quietly make the file a
+  /// summary, and a data export the vendor has curated is not a data export.
+  Future<List<Intention>> allForExport() async {
+    final rows =
+        await (select(intentions)
+              ..orderBy(<OrderClauseGenerator<$IntentionsTable>>[
+                (t) => OrderingTerm(expression: t.id),
+              ]))
+            .get();
+    return <Intention>[for (final row in rows) row.toEntity()];
+  }
+
+  /// The whole append-only log, oldest first.
+  Future<List<IntentionEvent>> allEventsForExport() async {
+    final rows =
+        await (select(intentionEvents)
+              ..orderBy(<OrderClauseGenerator<$IntentionEventsTable>>[
+                (t) => OrderingTerm(expression: t.id),
+              ]))
+            .get();
+    return rows.toEntities();
+  }
+
+  /// Erases every promise and every event (PRD §9.3).
+  ///
+  /// Events go first: they carry a foreign key onto intentions, and deleting
+  /// the parents first would either fail or cascade depending on a pragma —
+  /// neither is something to leave to chance in the one operation that must
+  /// not half-succeed. The FTS index is rebuilt rather than dropped, so a
+  /// later capture is not searched against ghosts.
+  Future<void> eraseEverything() async {
+    await transaction(() async {
+      await delete(intentionEvents).go();
+      await delete(intentions).go();
+    });
+    await attachedDatabase.rebuildSearchIndex();
+  }
+
   Future<void> _logEvent({
     required int intentionId,
     required IntentionEventType type,

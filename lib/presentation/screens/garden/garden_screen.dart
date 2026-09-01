@@ -183,10 +183,12 @@ class _GardenStats extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
+            // A kept-rate, not a streak (ADR-011): it cannot reset, so a calm
+            // week costs the user nothing. §11 calls this the resolution rate.
             child: _GardenStat(
-              value: scene.streakDays,
-              label: 'day streak',
-              emphasise: scene.streakDays > 0,
+              value: ((scene.keptRate ?? 0) * 100).round(),
+              suffix: '%',
+              label: 'of promises kept',
             ),
           ),
         ],
@@ -196,20 +198,18 @@ class _GardenStats extends StatelessWidget {
 }
 
 class _GardenStat extends StatelessWidget {
-  const _GardenStat({
-    required this.value,
-    required this.label,
-    this.emphasise = false,
-  });
+  const _GardenStat({required this.value, required this.label, this.suffix});
 
   final int value;
   final String label;
-  final bool emphasise;
+
+  /// Rendered tight against the number, so a rate reads "92%" rather than
+  /// leaving the unit stranded in the label.
+  final String? suffix;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final cya = context.cyaColors;
     return Container(
       padding: const EdgeInsets.symmetric(
         vertical: AppSpacing.lg,
@@ -223,11 +223,24 @@ class _GardenStat extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          AnimatedCounter(
-            value: value,
-            style: theme.textTheme.displaySmall?.copyWith(
-              color: emphasise ? cya.warningInk : theme.colorScheme.primary,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: <Widget>[
+              AnimatedCounter(
+                value: value,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              if (suffix != null)
+                Text(
+                  suffix!,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                  ),
+                ),
+            ],
           ),
           Text(label, style: theme.textTheme.labelMedium),
         ],

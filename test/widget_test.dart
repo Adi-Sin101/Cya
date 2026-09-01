@@ -1,6 +1,7 @@
 // Widget tests for the Cya! app shell, reactive over a real (in-memory) store.
 
 import 'package:cya/core/di/providers.dart';
+import 'package:cya/data/dao/preference_dao.dart';
 import 'package:cya/data/db/cya_database.dart';
 import 'package:cya/domain/entities/intention.dart';
 import 'package:cya/domain/enums/reminder_preset.dart';
@@ -14,8 +15,12 @@ void main() {
   late CyaDatabase db;
   final now = DateTime(2026, 3, 4, 18, 30);
 
-  setUp(() {
+  setUp(() async {
     db = CyaDatabase.memory();
+    // These tests are about a *returning* user's app. A fresh store has no
+    // onboarding flag, and the router would correctly send it to the welcome
+    // flow — which is what onboarding_test.dart covers instead.
+    await db.preferenceDao.write(PreferenceDao.keyOnboardingComplete, 'true');
     // Stand in for the native reminder scheduler. Its real behaviour is
     // covered in test/domain/usecases_test.dart; here it only needs to answer,
     // so the UI is never left waiting on a platform channel.
@@ -27,6 +32,9 @@ void main() {
             'canScheduleExact' => true,
             'ensureNotificationPermission' => true,
             'rescheduleAll' => 0,
+            // No fingerprint hardware in a test harness, and nothing this
+            // suite asserts depends on one.
+            'biometricAvailability' => 'unavailable',
             _ => null,
           };
         });

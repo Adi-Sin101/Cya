@@ -595,3 +595,175 @@ Format for each entry:
   as a test problem.
 - Next: place the widget on a launcher and settle §13.1's last ⚠️; a release keystore; golden tests
   for the core screens in both themes; then iOS, which has no native side at all.
+
+## 2026-09-01 — Iteration 9 (part 1): the loop fixes a real week demands
+- Plan: plans/iteration-9-onboarding-local-identity-and-loop-fixes.md
+- Goal: a grilling session settled what Cya! actually is — Gen Z multi-app user (§2.2), a
+  **trusted utility rather than a daily habit**, with Samsung + Poco as the reliability floor. Three
+  defects found by *reading the shipped code* contradicted that positioning. Fix those first; the
+  onboarding screens wait on Stitch.
+- Done:
+  - **ADR-012 — grouped reminders.** Every zero-tap capture defaults to `tonight` (20:00), and
+    notifications were posted one per promise. A good capture day therefore produced N separate
+    interruptions at one instant: the better the capture path worked, the worse the resurface
+    moment got. Reminders now share a notification group with `GROUP_ALERT_CHILDREN` and a summary
+    that appears from two children up and is recomputed when a child leaves. Per-promise Done and
+    Snooze survive, because one-tap resolution from the shade is a §3.4 invariant.
+  - **ADR-013 — "Let it go".** The fourth-snooze notification asked the user to "finish it, or let
+    it go" and offered only **Done**. Added `ACTION_LET_GO` + `CyaStore.archive` (status and event
+    `archived`, written in one transaction like every other mutation) shown in place of Snooze past
+    the limit, and `STATUS_ARCHIVED`/`EVENT_ARCHIVED` mirrored into `CyaDatabaseContract`.
+  - **ADR-011 — kept-rate replaces the streak.** The Garden's second stat was a day streak, which
+    resets on a calm week — a daily-habit mechanic under a trusted-utility product.
+    `GardenScene.keptRate` (kept over captured, null until something is captured) now sits there.
+    `streak()` stays computed and tested but is no longer surfaced.
+- Verified / working: `flutter analyze` 0 · `flutter test` **125/125** (121 + 4 new kept-rate
+  tests) · `:app:compileDebugKotlin` exit 0. The vocabulary test already asserted `archived` on
+  both sides, so the new Kotlin constants are covered by the existing cross-runtime contract test.
+- Broke / deferred:
+  - **[L-006]** `rescheduleAll()` runs on every app resume and re-armed *every* pending promise —
+    including those past the snooze limit, for which `ReminderReceiver` deliberately shows nothing.
+    Each firing wrote a `resurfaced` event. Every over-snoozed promise was therefore an endless
+    silent alarm loop polluting the event log that XP, the garden and every metric are projected
+    from. Found by reading Kotlin, not by a test: **there are still zero Kotlin tests**, and every
+    Dart test that crosses the boundary mocks the channel.
+  - Not yet done: onboarding, local identity (ADR-010), export/delete (§9.3), 30-day aging
+    (ADR-014), the reply-draft handoff (ADR-015), the instrumentation script.
+  - The Poco reboot question (D-4, MIUI Autostart) is still unanswered and still gates everything.
+- Lesson / rule: three real defects this session came from reading the shipped code against a
+  *stated product position*, not from running it. "Grouped or not?" is invisible to a unit test and
+  obvious the moment you ask what a good day looks like. Decide what the product is, then re-read
+  the code as if you were the user having a good week.
+
+## 2026-09-01 — Iteration 9 (part 2): onboarding and local identity
+
+- Goal: work items 1 and 2 of `plans/iteration-9-onboarding-local-identity-and-loop-fixes.md` —
+  the four onboarding steps, and identity that is a profile plus a PIN rather than an account
+  (ADR-010). Screens designed in Stitch against the existing Cya! design system asset, then
+  implemented against §8.1.
+- Done:
+  - **Onboarding, four steps, in that order.** What Cya! is → the share gesture → notification
+    permission → the OEM reliability checklist. Ordering *is* the design: both asks arrive after
+    the reason for them is on screen (§3.5). There is no global skip — the two teaching steps have
+    nothing to decline, and the two asking steps carry their own quiet way past, which is a
+    different thing from a link that lets someone leave without ever meeting the share sheet.
+  - **The share-gesture demo.** A looping, composited phone-inside-the-phone: a chat, a share sheet
+    rising, the Cya! target lighting up under a tap ripple, and a "Saved · 0.1s" toast. Built from
+    widgets rather than a video or a Rive file — it has to re-colour for dark mode, and the whole
+    thing is four transforms. Under reduced motion it holds the frame where everything it teaches
+    is on screen at once, rather than playing faster.
+  - **The reliability step.** `DeviceReliability.kt` names the OEM (Xiaomi/Poco/Redmi → HyperOS or
+    MIUI, Samsung → One UI, …), reports battery-exemption / exact-alarm / notification state, and
+    opens the right settings screen from a per-OEM component list. Autostart is unreadable on every
+    OEM, so it is recorded as something the user confirms, not something we detect — and the screen
+    says outright that Android will not let Cya! change any of it. No red, no warning triangles: a
+    reminder app that opens by telling you your phone is broken has picked a fight it does not need.
+  - **Local identity (ADR-010).** Profile = display name + one of six glyphs. Lock = a 4-digit PIN
+    as PBKDF2-HMAC-SHA256 (100k iterations, per-device salt, constant-time compare), an escalating
+    cooldown after five failures (30s doubling to a 5-minute cap), and an optional fingerprint.
+  - **Biometrics without a plugin (ADR-016).** `local_auth` would have required re-parenting the
+    host activity and its themes to AppCompat — including `LaunchTheme`, the window background the
+    two-second capture path paints against. The framework `BiometricPrompt` over the existing
+    channel needs neither. API 28+; below that the PIN is simply the only way in.
+  - **The lock is an overlay, not a route.** Drawn inside `MaterialApp.builder`, above the
+    navigator. A `cya://promise/<id>` deep link therefore resolves *behind* the gate and is revealed
+    by the PIN, instead of being lost to a lock screen that dumps the user on Home (§3.4).
+    Re-locks after a minute in the background, not instantly — sharing into Cya! bounces through
+    another app, and an instant re-lock would put a four-digit toll on §3.1.
+  - **Fixed on the way past:** `ensureNotificationPermission` replied `false` the moment the system
+    dialog opened, so a first grant always looked like a refusal. It now holds the
+    `MethodChannel.Result` and answers from `onRequestPermissionsResult`.
+  - Reachable afterwards: Profile → Privacy has the lock, the fingerprint switch, and removal —
+    which asks for the PIN first, since a phone left unlocked on a table must not be able to disarm
+    the thing protecting it.
+- Verified / working: `flutter analyze` 0 · `flutter test` **165/165** (was 125) ·
+  `flutter build apk --debug` exit 0, which is what proves the new Kotlin compiles. New tests:
+  PBKDF2 against published RFC 8018 vectors (a *wrong* KDF round-trips perfectly well — it just
+  isn't the one whose cost anyone has measured), lock policy, the whole onboarding flow, and the
+  gate. `pubspec.yaml` gained exactly one package, `crypto` — pure Dart, offline — so "no network
+  dependency is added" holds, and there is still no `INTERNET` permission.
+- Broke / deferred:
+  - **[L-007]** Every widget test that typed a PIN hung to the harness timeout with no error:
+    `Isolate.run` never resolves inside `testWidgets`' fake-async zone. Cost me two wrong diagnoses
+    (`pumpAndSettle`, then a never-settling animation) before the seam.
+  - **[L-008]** The familiar `IntrinsicHeight` + `Spacer` scroll pattern cannot contain a
+    `LayoutBuilder`; neither can `SliverFillRemaining(hasScrollBody: false)`. The error names the
+    scaffold, several widgets from the cause.
+  - **[L-009]** A 79px overflow on Home under `flutter test` at 400dp turned out to be the test
+    font drawing ~1em per glyph, not a real defect. Kept the defensive `Flexible` + ellipsis on the
+    OEM chip anyway, because a long device name at a 1.35 text scale can reproduce it for real.
+  - **Not done, still outstanding:** SQLCipher at rest keyed from the Android Keystore — the third
+    part of work item 2. The PIN proves who is holding the phone; encrypting the file is a separate
+    job touching the shared schema and `CyaStore`, and belongs with the native contract rather than
+    bolted onto a UI iteration. Also untouched this session: export/delete-all (§9.3, item 3),
+    30-day aging (ADR-014), the reply-draft handoff (ADR-015), the instrumentation script.
+  - **Two Stitch renders never came back.** The share-gesture and PIN-setup screens timed out on
+    every attempt (three and one respectively) — both are the compositional ones, a device-in-device
+    and a 12-key pad. The other five landed. Both were fully specified in the prompts and are
+    implemented in Flutter regardless; only the static mock is missing.
+  - **The Poco reboot question (D-4) is still unanswered and still gates everything.** This
+    iteration built the fix; nothing here has met a physical Xiaomi. The per-OEM settings intents
+    are undocumented and get renamed between skin versions, which is why every one of them resolves
+    before it launches and falls back to a written path — but that fallback is also untested.
+- Lesson / rule: the two hardest hours went to a hang and a layout assertion that both named the
+  wrong widget. When a failure points at a scaffold or a `pumpAndSettle`, ask what *crosses a
+  boundary* underneath it — an isolate, an intrinsic pass, a substituted font. The framework
+  reports where it noticed, not where it went wrong.
+
+## 2026-09-01 — Iteration 9 (part 3): encryption, privacy controls, and the rest of the plan
+
+- Goal: finish everything iteration 9 left open — SQLCipher at rest (the remainder of work item 2),
+  export/delete-all (item 3), 30-day retirement (item 4 / ADR-014), the reply-draft handoff
+  (item 6 / ADR-015) and the instrumentation script (item 7) — then verify the whole app on a
+  device rather than in the test suite.
+- Done:
+  - **Encryption at rest (ADR-017).** SQLCipher 4 on both runtimes, keyed with 32 random bytes
+    sealed by an Android Keystore AES-GCM key and passed as SQLCipher's raw-key literal
+    `x'<64 hex>'`. Raw rather than a passphrase because SQLCipher would otherwise run 256,000
+    PBKDF2 rounds *per open*, and the Share Sheet path opens this database cold with no Flutter
+    engine — measured result: capture stayed at **9–15 ms warm**. A pre-encryption file converts
+    itself in place on first touch, built beside the original and swapped only once complete.
+  - **Export and delete-all (§9.3).** Export writes the whole store as indented JSON into a cache
+    directory and hands it to the share sheet through a `FileProvider`; the PIN's salt, hash and
+    cooldown are withheld by a denylist checked in one place. Delete-all is guarded by a typed
+    `DELETE`, cancels alarms *before* the rows go — an alarm is keyed by intention id and there is
+    no way to find it again afterwards — and returns the app to onboarding.
+  - **ADR-014 retirement.** Pending promises untouched for 30 days archive themselves with
+    `{"reason":"aged_out"}`, announced once in the digest with one-tap restore that reschedules to
+    now. Keyed on `updatedAt`, so anything snoozed or edited recently is safe.
+  - **ADR-015 reply-with-draft.** A collapsed composer on Promise Detail hands the finished text to
+    the source app. Cya! never sends, and the card says so.
+  - **`tool/metrics.dart`.** Reads a data *export*, not the database — so it needs no device key,
+    works off-device, and cannot drift from the format the user is entitled to.
+- Verified / working: `flutter analyze` 0 · `flutter test` **183/183** (was 165) ·
+  `flutter build apk --debug` exit 0. And, on an Android 14 emulator, an actual walk-through:
+  all four onboarding steps, the permission dialog awaited correctly, the reliability checklist
+  re-ticking Notifications after the grant, profile, PIN set/confirm, relock on restart, wrong PIN
+  rejected, right PIN accepted, reply draft, export → share sheet → metrics script, and
+  delete-everything returning to onboarding. The encryption was proved the only way that counts:
+  the file header is noise rather than `SQLite format 3`, a native capture created and wrote the
+  encrypted database with no Flutter engine running, and the Flutter UI then read all five rows
+  back.
+- Broke / deferred:
+  - **[L-010]** `net.zetetic:sqlcipher-android` and `package:sqlite3`'s `source: sqlcipher` hook
+    both ship a file called `libsqlcipher.so`. Android packaging keeps one; the winner had no JNI,
+    so every Kotlin open died with `UnsatisfiedLinkError` while Dart worked perfectly. Fixed by
+    moving Dart to `sqlite3mc` in SQLCipher-compat mode — a different filename, so both ship.
+  - **[L-011]** Stock SQLite accepts every cipher pragma and ignores it, so a mislinked build would
+    write plaintext that every layer above believes is encrypted. Both runtimes now assert the
+    cipher is real on every open and refuse to write otherwise.
+  - **[L-012]** 183 green tests did not catch either the native crash or an onboarding CTA pushed
+    below the fold on a 1080×2400 screen. Ten minutes on an emulator caught both.
+  - Fixed on device: the mascot's white asset background showing as a square on a mint circle; the
+    share-gesture hero growing until it pushed "Got it" off screen (heroes are now capped at 340dp);
+    a headline claiming "three switches" on a device that shows three rows, not four.
+  - **Still outstanding:** no release keystore, no golden tests, iOS has no native side, and the
+    home-screen widget has still never been seen on a launcher.
+  - **The Poco/Samsung reboot question (D-4) remains unanswered.** Everything above ran on an
+    emulator, which is stock Android — it detected itself as "Google", correctly hid the Autostart
+    row, and therefore exercised none of the OEM-specific intents this iteration was built for.
+    That is the one acceptance criterion that still needs real hardware.
+- Lesson / rule: the two defects that mattered most this session were both invisible to the suite —
+  one lived in the packaging of native libraries, the other in the size of a real screen. Green
+  tests are evidence that the Dart logic is right, not that the app works. For anything with two
+  runtimes in it, "done" means the engine-free path was watched running on a device.

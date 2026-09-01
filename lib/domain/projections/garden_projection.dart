@@ -39,6 +39,7 @@ class GardenScene {
     required this.totalGrowths,
     required this.thisWeekGrowths,
     required this.streakDays,
+    this.totalCaptured = 0,
   });
 
   static const GardenScene empty = GardenScene(
@@ -53,10 +54,24 @@ class GardenScene {
   final int totalGrowths;
   final int thisWeekGrowths;
 
+  /// Every promise ever captured — the denominator of [keptRate].
+  final int totalCaptured;
+
   /// Consecutive days, ending today or yesterday, with at least one promise
-  /// kept. Yesterday still counts — a streak should not break before the day
-  /// the user is living in is over.
+  /// kept.
+  ///
+  /// **No longer surfaced (ADR-011.)** A streak is a daily-habit mechanic, and
+  /// Cya! is a trusted utility: someone who captures on Monday, keeps
+  /// everything on Tuesday and has a calm Wednesday used the product perfectly
+  /// and would be shown a zero. Kept here because it is cheap, tested, and the
+  /// achievement stats still carry it; [keptRate] is what the Garden shows.
   final int streakDays;
+
+  /// Share of captured promises that were kept, `0..1` — the metric §11 calls
+  /// "resolution rate". Unlike a streak it cannot reset, so a quiet week costs
+  /// the user nothing. Null until something has been captured.
+  double? get keptRate =>
+      totalCaptured == 0 ? null : totalGrowths / totalCaptured;
 
   bool get isEmpty => totalGrowths == 0;
 }
@@ -77,12 +92,25 @@ abstract final class GardenProjection {
   static const Duration timeToMaturity = Duration(days: 7);
 
   static GardenScene build(List<IntentionEvent> events, DateTime now) {
+    final totalCaptured = events
+        .where((event) => event.type == IntentionEventType.captured)
+        .length;
     final resolutions =
         events
             .where((event) => event.type == IntentionEventType.resolved)
             .toList()
           ..sort((a, b) => a.occurredAt.compareTo(b.occurredAt));
-    if (resolutions.isEmpty) return GardenScene.empty;
+    // No plants yet, but captures may still exist — the kept-rate has to be
+    // able to say "0 of 7", which is honest, rather than nothing at all.
+    if (resolutions.isEmpty) {
+      return GardenScene(
+        beds: const <GardenBed>[],
+        totalGrowths: 0,
+        thisWeekGrowths: 0,
+        streakDays: 0,
+        totalCaptured: totalCaptured,
+      );
+    }
 
     final byWeek = <DateTime, List<GardenPlant>>{};
     for (final event in resolutions) {
@@ -110,6 +138,7 @@ abstract final class GardenProjection {
       totalGrowths: resolutions.length,
       thisWeekGrowths: byWeek[thisWeek]?.length ?? 0,
       streakDays: streak(resolutions, now),
+      totalCaptured: totalCaptured,
     );
   }
 

@@ -44,11 +44,13 @@ internal object CyaDatabaseContract {
     const val STATUS_OPEN = "open"
     const val STATUS_SNOOZED = "snoozed"
     const val STATUS_RESOLVED = "resolved"
+    const val STATUS_ARCHIVED = "archived"
 
     const val EVENT_CAPTURED = "captured"
     const val EVENT_RESOLVED = "resolved"
     const val EVENT_SNOOZED = "snoozed"
     const val EVENT_RESURFACED = "resurfaced"
+    const val EVENT_ARCHIVED = "archived"
 
     /**
      * DDL for the tables both runtimes share. Executed only when the file does not exist yet;

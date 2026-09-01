@@ -40,6 +40,14 @@ kotlin {
     }
 }
 
+dependencies {
+    // SQLCipher for the shared store (ADR-010). The Kotlin surfaces — Share Sheet capture,
+    // notification actions, the widget, boot rescheduling — all open the same encrypted file the
+    // Dart side opens through `sqlcipher_flutter_libs`, so the two must stay on SQLCipher 4.
+    implementation("net.zetetic:sqlcipher-android:4.6.1")
+    implementation("androidx.sqlite:sqlite:2.4.0")
+}
+
 flutter {
     source = "../.."
 }

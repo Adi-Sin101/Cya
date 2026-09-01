@@ -422,19 +422,26 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Native-thin capture (Share Sheet) | ✅ | 2026-08-31 | Yes | Kotlin CaptureActivity → direct SQLite write, no Flutter engine. Cold fresh-install 762 ms total / 172 ms write; warm 117 ms median; re-measured after the v2 schema and the rename: **37–120 ms**. Now also records the sharing app's package. |
 | Native animated splash (video) | ➖ | 2026-08-31 | Removed | Superseded by the in-Flutter sprite splash. `SplashActivity` was never exported and had no launcher filter — dead code carrying a 3.4 MB mp4. Deleted (Iteration 6); release APK dropped 63.4 MB → 20.8 MB with per-ABI splits. |
 | Native alarm scheduler | ✅ | 2026-08-31 | Yes | `setExactAndAllowWhileIdle`, degrades to inexact when the permission is absent; re-armed on boot and on every app resume. |
-| Local notifications + escalation | ✅ | 2026-08-31 | Yes | Native channels quiet/banner; Done + Snooze actions write to the store with no Flutter engine; past the snooze limit Cya! stops interrupting (digest tier). |
+| Local notifications + escalation | ✅ | 2026-09-01 | Yes | Native channels quiet/banner; Done + Snooze actions write to the store with no Flutter engine; past the snooze limit Cya! stops interrupting (digest tier). **Iteration 9:** due reminders share one notification group with a summary card (ADR-012), and the limit now offers **Let it go** → archive from the shade (ADR-013). `rescheduleAll` no longer re-arms digest-tier promises — see [L-006]. |
 | Snooze limit logic | ✅ | 2026-08-31 | Yes | SnoozePolicy (max 3) enforced in SnoozeIntention; detail screen prompts to resolve/archive. |
 | Home screen | ✅ | 2026-08-31 | Yes | Reactive over Drift; section-scoped consumers; designed empty state. Iteration 6: 6 blocks → 4 (level inlined; garden preview + week stats merged into one `WeekCard`), staggered entrances, animated ring/counters. Day boundary now rolls over at midnight on its own (`todayProvider`). |
 | Promise detail / resurface | ✅ | 2026-08-31 | Yes | Done / **Open-in-app (real handoff via `openLink`)** / Snooze + "Why this matters". Actions moved above the supporting cards; category collapsed from 7 inline chips to one row + sheet. |
 | Quick Settings Tile | ✅ | 2026-08-31 | Yes | TileService opens a native dialog capture (clipboard pre-filled), engine-free. Tile capture measured at 35 ms. |
 | Home-screen widget | ⚠️ | 2026-08-31 | Untested on a home screen | RemoteViews widget reading the store directly (no engine); provider registered and its `APPWIDGET_UPDATE` receiver confirmed via `dumpsys`. Placing it on the launcher still could not be automated over adb — needs one manual look on a real device. |
 | Categories + FTS search | ✅ | 2026-08-31 | Yes | FTS5 search verified against natively written rows (ADR-005); seven manual categories with a picker on Promise Detail, filter chips on Promises, and an icon on every tile. |
-| Gamification (XP/levels/garden) | ✅ | 2026-08-31 | Yes | XP, levels, week stats and the Memory Garden are pure projections. Iteration 6 rebuilt the garden as a painted scene: time-of-day sky, sun/moon/stars, parallax hills, textured soil, **8** species with ground shadows, wind sway, fireflies. Reward moments now ship as Flutter particle bursts (ADR-007) rather than Rive. |
+| Gamification (XP/levels/garden) | ✅ | 2026-09-01 | Yes | XP, levels, week stats and the Memory Garden are pure projections. Iteration 6 rebuilt the garden as a painted scene: time-of-day sky, sun/moon/stars, parallax hills, textured soil, **8** species with ground shadows, wind sway, fireflies. Reward moments now ship as Flutter particle bursts (ADR-007) rather than Rive. **Iteration 9:** the Garden's second stat is a kept-rate, not a day streak — a streak resets on a calm week and Cya! is a trusted utility (ADR-011). `streak()` stays computed and tested but unsurfaced. |
 | Achievements | ✅ | 2026-08-31 | Yes | Six badges from 8.2, evaluated as predicates over counts; locked ones show real progress. Opened from Profile. |
 | Weekly digest | ✅ | 2026-08-31 | Yes | Sunday 18:00 native alarm (self-rescheduling), low-importance notification leading with what was kept, `cya://digest` into a review screen with one-tap resolution. |
 | Enrichment (date extraction) | ✅ | 2026-08-31 | Yes | Rule-based on-device parser (ADR-008): named days, weekdays, clock times, plus keyword auto-categorization. Runs after startup, never on the capture path; never overwrites a user's choice; re-arms the alarm when it moves a reminder. Verified on device — a natively captured "Call the plumber tomorrow at 9am" was categorised `reply` and rescheduled to 09:00. |
 | Motion & haptics system | ✅ | 2026-08-31 | Yes | `AppMotion` tokens + `CyaHaptics` (a five-entry vocabulary, suppressed under reduced motion). Entrance/Pressable/AnimatedCounter/RewardBurst primitives. Reduced motion verified by test: the Garden settles instead of animating forever. |
 | Source-app identity | ✅ | 2026-08-31 | Yes | `source_package` (schema v2) + an `appIcon` channel rendering the real launcher icon; cached per package in Dart. Falls back to a brand glyph, then the mascot. Verified with Chrome and Settings icons on device. |
+| Onboarding (4 steps) | ✅ | 2026-09-01 | Yes | What Cya! is → **the share gesture** → notification permission → OEM reliability checklist. The share step is an animated in-Flutter demo (phone-in-phone, sheet rising, target lit, "Saved · 0.1s") — nothing else in the app teaches the gesture the product depends on. Permission is asked only after the reminder it buys is on screen (§3.5); "Not now" is a real option. The reliability step names the OEM, opens Autostart/battery/exact-alarm settings, and says plainly that Android will not let Cya! flip them. Not yet run on a physical Poco. |
+| Local identity (profile + lock) | ✅ | 2026-09-01 | Yes | ADR-010. Profile = display name + one of six glyphs in `preferences`. Lock = 4-digit PIN as PBKDF2-HMAC-SHA256 (100k, salted), escalating cooldown after 5 failures, optional fingerprint via the framework `BiometricPrompt` (ADR-016, API 28+). The gate is drawn over the router, so a reminder deep link survives it; re-locks after 1 minute in the background, not instantly, so sharing *into* Cya! never costs a PIN. Reachable afterwards from Profile → Privacy; removing the lock requires the PIN. Encryption at rest landed with ADR-017. |
+| Encryption at rest | ✅ | 2026-09-01 | Yes | ADR-017. SQLCipher 4 on both runtimes — `net.zetetic:sqlcipher-android` in Kotlin, `package:sqlite3`'s `sqlite3mc` build hook in SQLCipher mode in Dart — keyed with a raw 256-bit key sealed in the Android Keystore. Verified on an emulator: the file header is random, a Kotlin capture with no Flutter engine round-trips to the Flutter UI, and capture stayed at **9–15 ms warm** (397 ms first run). Plaintext files convert in place on first touch. Both sides refuse to open if the cipher is not actually linked. |
+| Privacy controls (§9.3) | ✅ | 2026-09-01 | Yes | **Export**: the whole store as indented JSON through a `FileProvider` + share sheet, with the PIN's salt/hash/cooldown redacted by a denylist. **Delete everything**: promises, events, profile and lock, guarded by a typed `DELETE` confirmation, cancelling alarms *before* the rows go. Both verified on device; delete returns the app to onboarding. |
+| Auto-retirement (ADR-014) | ✅ | 2026-09-01 | Yes | Pending promises untouched for 30 days archive themselves with `{"reason":"aged_out"}`, alarms cancelled in the same use-case. Announced once in the digest with one-tap restore. Sweep runs once per app start behind enrichment. |
+| Reply-with-draft (ADR-015) | ✅ | 2026-09-01 | Yes | A collapsed composer on Promise Detail hands the finished text to the source app (`ACTION_SEND` targeted at its package, then the saved deep link, then a chooser). Cya! never sends — stated on the card itself. |
+| Metrics tooling | ✅ | 2026-09-01 | Yes | `tool/metrics.dart` reads a data **export** rather than the database, so it needs no device key and cannot drift from the format the user is entitled to. Prints captures/day, kept-rate, resurface→resolve latency, snooze histogram, retirements, missed alarms and the §9.2 capture-speed budget. |
 | Accessibility (§8.4) | 🟨 | 2026-08-31 | Partly | Text scale clamped 0.85–1.35; status inks pass 4.5:1 in both themes; 48dp targets; semantics on toggles/nav/ring; reduced motion honoured. Not yet audited with a screen reader. |
 | App identity / release prep | ✅ | 2026-08-31 | Yes | `applicationId` moved off `com.example` to **`dev.cya.app`** (Kotlin package tree moved with it); release still signs with the debug key — a real keystore is outstanding. |
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
@@ -763,6 +770,206 @@ Consequences: A small vocabulary to learn ("is this colour carrying letters?"), 
   still the source of truth for the fills.
 ```
 
+```
+ADR-010 (2026-09-01) Identity is local-only; there is no account
+Context: The product owner asked for "proper onboarding, registration and login" and for everything
+  to stay "local, safe and private". Those read as contradictory only if identity means a row in
+  someone else's database. §5.7 says no backend in V1 and §3.5 says local-first, so a hosted account
+  would also make an outage or an expired token a barrier between a person and their own promises —
+  in a product whose entire claim is "nothing is ever lost".
+Decision: Onboarding presents registration and login **as an experience**, backed entirely by the
+  device. A profile is a display name plus a glyph in the existing `preferences` table; "login" is a
+  4-digit PIN, stored as PBKDF2-HMAC-SHA256 (100k iterations, per-device random salt) and never in
+  readable form, with an optional fingerprint shortcut. No email, no password recovery, no network
+  call, and no `INTERNET` permission to make one with. The unlock screen is drawn *over* the router's
+  result rather than being a route, so a `cya://promise/<id>` deep link survives being locked.
+  *Rejected:* Supabase/Firebase accounts + hosted Postgres — contradicts §3.5, breaks §5.7, and
+  fails exactly when the user needs the app most.
+Consequences: There is no PIN reset, and both the setup screen and this decision say so out loud
+  rather than hiding it until someone forgets. Brute force is answered by the KDF cost plus an
+  escalating cooldown (5 attempts → 30s, doubling to a 5-minute cap), because a four-digit space is
+  only ten thousand values. Phase 3 E2EE sync layers on top without redesign: the passphrase derives
+  the keys and the server only ever holds ciphertext. **Still outstanding:** SQLCipher at rest keyed
+  from the Android Keystore — the PIN proves who is holding the phone, which is a different job from
+  encrypting the file.
+
+```
+
+```
+ADR-011 (2026-09-01) A kept-rate replaces the streak
+Context: `GardenProjection.streak` counts consecutive days with a resolution. The 2026-09-01
+  grilling settled that Cya! is a **trusted utility, not a daily habit** (§1.2): the user should
+  rarely need to open it. A streak is a daily-habit mechanic — someone who captures on Monday,
+  keeps everything on Tuesday and has a calm Wednesday used the product perfectly and is shown a
+  zero. Nothing in the interface may punish a quiet week.
+Decision: The Garden shows a **kept-rate** (`totalGrowths / totalCaptured`) instead. It cannot
+  reset, and it is the metric §11 already names ("resolution rate"). `streak()` stays computed and
+  tested — it is cheap and the achievement stats carry it — but is no longer surfaced.
+Consequences: The number on the Garden goes up and down with behaviour instead of resetting to
+  zero on a rest day. A user with nothing captured gets `null` rather than a misleading 0%.
+
+```
+
+```
+ADR-012 (2026-09-01) Due reminders are grouped, not stacked
+Context: Every zero-tap capture defaults to `ReminderPreset.tonight` (20:00), and
+  `ReminderNotifications.show` posted one notification per promise. Capture is frictionless by
+  design, so a *good* capture day produces N separate interruptions at one instant — the capture
+  path working well makes the resurface moment worse. That inverse relationship sits at the centre
+  of the product.
+Decision: Every reminder joins one notification group with `GROUP_ALERT_CHILDREN`, plus a summary
+  card that appears from two children up and is recomputed whenever a child leaves. Each child
+  keeps its own Done/Snooze, because one-tap resolution from the shade is a §3.4 V1 invariant.
+Consequences: Six promises due at 20:00 read as one card. The default stays `tonight` — for the
+  §2.2 user, tonight is genuinely when they deal with postponed content. Staggering was rejected:
+  six buzzes over thirty minutes is worse than six at once.
+
+```
+
+```
+ADR-013 (2026-09-01) Past the snooze limit, "Let it go" exists
+Context: The fourth-snooze notification read *"You've pushed this back 3 times. Finish it, or let
+  it go."* and offered only **Done** — the copy asked for a decision the UI could not accept. Worse,
+  `rescheduleAll()` runs on every app resume and re-armed digest-tier promises, whose alarms fire,
+  show nothing (by design), and write a `resurfaced` event. Every over-snoozed promise was an
+  endless silent loop polluting the log that gamification and metrics project from.
+Decision: Add `ACTION_LET_GO` and a matching `CyaStore.archive` (status + event `archived`, in one
+  transaction like every other mutation), shown in place of Snooze past the limit. `rescheduleAll`
+  now skips promises at or past `MAX_SNOOZES`.
+Consequences: The limit becomes a fork the user can actually take, from the shade, without opening
+  the app. Archive not delete: the promise stays findable, because "never lose it" is §1.3.
+```
+
+```
+ADR-014 (2026-09-01) Promises retire themselves after 30 untouched days
+Context: Nothing in the store ever expired, so the pending list only grew, and the weekly digest
+  read a lengthening backlog back at the user every Sunday — §12's failure mode arriving by design
+  rather than by accident. A memory product that accumulates has become the to-do list §1.2 says it
+  is not.
+Decision: A pending promise with no reminder fired, no snooze, no edit and no glance for 30 days is
+  archived with an `archived` event carrying `{"reason":"aged_out"}`, its alarm cancelled in the
+  same use-case. Announced once in the digest ("12 promises quietly retired — tap to bring any
+  back") and restorable in one tap, which reschedules it to now rather than to a month-old time.
+  Keyed on `updatedAt`, not `capturedAt`: a year-old article snoozed yesterday is a live decision.
+Consequences: The sweep runs once per app start, behind enrichment — one indexed query that usually
+  matches nothing. A timer or a background worker would be an entire scheduling surface for a job
+  whose deadline is "eventually", and the app is opened often enough that eventually arrives.
+  Nothing is deleted: the event log is append-only, and "this no longer matters" is a decision the
+  user gets to disagree with.
+
+```
+
+```
+ADR-015 (2026-09-01) A scheduled reply is a prefilled draft, never an automated send
+Context: "Reply to this later" is the §2.2 user's most common promise, and the obvious feature is to
+  send the reply for them at the reminder.
+Decision: Cya! opens the conversation with the draft ready. It never sends. Android exposes no
+  public API to send a message in a third-party app, and every workaround is disqualified on its own
+  terms: `SEND_SMS` is restricted to default SMS handlers and would undermine the core-function
+  claim that justifies `USE_EXACT_ALARM`; `NotificationListenerService` + `RemoteInput` only works
+  while an unread notification is still live and is exactly the private-app scraping §3.5 forbids;
+  `AccessibilityService` automation is a Play policy violation that breaks on every target-app
+  update.
+Consequences: The handoff tries the source app first, then the saved deep link, then a chooser, and
+  says so on screen ("Cya! opens the conversation with this ready. It never sends anything for
+  you."). This is also the better product: under a trusted-utility framing "your promise was never
+  lost" fails safely and "we sent something as you" does not.
+
+```
+
+```
+ADR-017 (2026-09-01) The store is encrypted with SQLCipher, reached two different ways
+Context: ADR-010 left encryption at rest outstanding. Both runtimes open the same file, so both need
+  the same cipher — and they get their native code from completely different places: Kotlin from
+  Gradle, Dart from `package:sqlite3`.
+Decision: Kotlin uses `net.zetetic:sqlcipher-android`; Dart uses `package:sqlite3`'s build hook
+  (`hooks: user_defines: sqlite3: source: sqlite3mc`) and switches SQLite3 Multiple Ciphers into its
+  SQLCipher 4 scheme with `PRAGMA cipher='sqlcipher'; PRAGMA legacy=4;` before the key. The key is
+  32 random bytes generated once, sealed with an AES-GCM key in the Android Keystore, and passed as
+  SQLCipher's **raw-key** literal `x'<64 hex>'` on both sides.
+  *Rejected — `source: sqlcipher` for Dart:* that hook ships a library named `libsqlcipher.so`, and
+  so does net.zetetic. Only one file of a name survives into an APK, the winner was the C-only build
+  with no JNI, and every Kotlin open died with `UnsatisfiedLinkError`. `libsqlite3mc.so` is a
+  different filename, so both ship and each runtime loads the one it can call.
+  *Rejected — a passphrase:* SQLCipher would run 256,000 PBKDF2 rounds on **every open**, and the
+  Share Sheet path opens this database cold with no Flutter engine. A raw 256-bit key has nothing
+  left to stretch; the Keystore does the protecting.
+  *Rejected — `setUserAuthenticationRequired` on the Keystore key:* a reminder must fire, and be
+  resolved from the shade, on a locked phone (§3.4). The PIN gates reading promises; this key gates
+  reading the file.
+Consequences: Measured on an emulator, capture stayed at **9–15 ms warm** (397 ms on the very first
+  run, which also creates the database and generates the key) — no regression against §9.2. The APK
+  gains ~6 MB per ABI for the two libraries. Because a build that quietly linked stock SQLite would
+  accept every pragma, ignore them, and write readable plaintext, both runtimes assert the cipher is
+  real on every open (`PRAGMA cipher` in Dart, `PRAGMA cipher_version` in Kotlin) and refuse to
+  proceed otherwise. A pre-encryption plaintext file is converted in place on first touch via
+  `sqlcipher_export`, built beside the original and swapped only once complete.
+
+```
+
+```
+ADR-016 (2026-09-01) The fingerprint prompt is native, with no plugin
+Context: ADR-010's lock needs a biometric prompt. The default answer is `local_auth`, which requires
+  the host activity to be a `FlutterFragmentActivity` and its theme to descend from AppCompat.
+  Cya!'s activity themes are plain `Theme.*.NoTitleBar`, and `LaunchTheme` is the window background
+  every capture surface renders against — so satisfying a plugin's dialog would have meant editing
+  the theme the two-second capture path paints with.
+Decision: Call the framework `android.hardware.biometrics.BiometricPrompt` from Kotlin over the
+  existing `cya/reminders` channel, the same way notifications and alarms already bypass their
+  plugins. No dependency, no theme change, no new activity base class.
+Consequences: Biometrics start at API 28. Below that the option is simply not offered and the PIN is
+  used — the correct degradation, since a fingerprint is a way to skip typing the PIN and never a
+  replacement for having one. `pubspec.yaml` gained exactly one package for this whole iteration
+  (`crypto`, pure Dart, offline), so the "no network dependency" acceptance criterion holds.
+
+```
+
+```
+[L-007] A deliberately slow function needs a seam, or it takes the UI tests with it
+What broke / went wrong: `PreferenceLockRepository` ran PBKDF2 through `Isolate.run` — correct for
+  the app, since burning 100k iterations on the UI isolate is a dropped frame by design. Every
+  widget test that typed a PIN then hung until the 2-minute harness timeout, with no error.
+Why: `testWidgets` runs inside a fake-async zone. A future that resolves on *another* isolate is
+  never completed by that zone, so `await` simply never returns. The failure mode is a hang, not an
+  exception, so nothing points at the cause — the first two investigations blamed `pumpAndSettle`
+  and a never-settling animation instead.
+Fix: A `PinWorker` seam on the repository — an isolate in the app, inline in tests (paired with the
+  already-injectable iteration count). The cost itself is asserted separately against published
+  RFC 8018 vectors, so lowering it in a widget test proves nothing less.
+Rule: anything deliberately expensive gets an injection point for *where* it runs, not just how
+  much it costs. And a widget test that hangs rather than fails is almost always real async
+  crossing the fake-async boundary.
+```
+
+```
+[L-008] `IntrinsicHeight` and `LayoutBuilder` cannot share a subtree
+What broke / went wrong: The onboarding scaffold used the familiar
+  `SingleChildScrollView` → `ConstrainedBox(minHeight)` → `IntrinsicHeight` → `Column` + `Spacer`
+  pattern to pin its buttons to the bottom while still scrolling on a short window. Every onboarding
+  test failed in layout, and `SliverFillRemaining(hasScrollBody: false)` failed the same way.
+Why: Both run an intrinsic-sizing pass, and `LayoutBuilder` — used inside the mascot hero to size
+  itself to the available box — has no intrinsics to give. The error names the *scaffold*, several
+  widgets away from the actual cause.
+Fix: `SliverFillRemaining(hasScrollBody: false)` for the layout, and the hero sized by
+  `AspectRatio` inside a `ConstrainedBox` instead of by `LayoutBuilder`.
+Rule: a widget that pins content to the bottom *and* scrolls will measure intrinsics, so nothing
+  below it may be a `LayoutBuilder`. Size by ratio or by constraint, not by callback.
+```
+
+```
+[L-009] `flutter test` draws ~1em per glyph, so width failures there are usually fictional
+What broke / went wrong: Running the new tests at a realistic 400dp width produced a 79px
+  `RenderFlex` overflow on Home's "Today's promises" header — a screen that has shipped and been
+  looked at on real hardware.
+Why: The test environment substitutes a fallback font whose every glyph is roughly one em wide.
+  "Today's promises" at 20px measures 320px there against ~175px in Plus Jakarta Sans. The existing
+  suite never saw it because it runs at the 800px default.
+Rule: an overflow that appears only under `flutter test` is a font-metrics artefact until proved
+  otherwise on a device. Give tests headroom rather than "fixing" a layout that is not broken — but
+  do keep the defensive `Flexible`/`ellipsis` where the content is genuinely variable (an OEM name,
+  a user's own text), because a large text scale can reproduce it for real.
+```
+
 ### 13.4 Mistakes & lessons learned
 ```
 [L-001] The shared database is only as portable as the weakest SQLite that opens it
@@ -830,10 +1037,87 @@ Lesson / rule to remember going forward: In this app, `reminder_at` is a two-sid
   same operation. A periodic reconciler (resume, boot) is insurance, never the mechanism.
 ```
 
+```
+[L-006] A silent escalation tier still needs its alarm cancelled
+What broke / went wrong: Past the snooze limit a promise reaches the digest tier, and
+  `ReminderReceiver` deliberately shows nothing for it. But `rescheduleAll()` — which runs on every
+  app resume, not just at boot — re-armed *every* pending promise including those. So each app
+  open queued an alarm that fired, displayed nothing, wrote a `resurfaced` event, and was queued
+  again on the next resume. Every over-snoozed promise became a permanent silent loop writing junk
+  into the append-only log that XP, the Memory Garden and every §11 metric are projected from.
+Why: The escalation *decision* lived in the receiver ("should I show this?") while the *scheduling*
+  decision lived in the scheduler ("is this pending?"). Two different questions, and only one of
+  them knew about the snooze limit. Nothing failed loudly because the intended behaviour at that
+  tier is silence — the bug and the feature look identical from outside.
+Fix: ADR-013 — `rescheduleAll` filters to `snoozeCount < MAX_SNOOZES`, and the tier now has a real
+  exit ("Let it go") instead of only a quieter voice.
+Rule: when a code path's correct behaviour is *to do nothing visible*, it needs a test or a log
+  line proving it did nothing **and stopped**. Silence is not evidence of termination — and this
+  was found by reading Kotlin, which still has zero tests.
+```
+
+```
+[L-010] Two native libraries of the same name: only one reaches the APK
+What broke / went wrong: With Dart set to `source: sqlcipher` and Kotlin on
+  `net.zetetic:sqlcipher-android`, every Kotlin database open died with
+  `UnsatisfiedLinkError: No implementation found for ... SQLiteConnection.nativeOpen`. Both
+  dependencies ship a file called `libsqlcipher.so`; the APK contained exactly one per ABI, and the
+  winner was Flutter's C-only build with no JNI at all.
+Why: Android packaging deduplicates `lib/<abi>/<name>.so` by name. Nothing warns — the build
+  succeeded, the app launched, and Dart worked perfectly, because Dart was using the library that
+  won. Only the engine-free Kotlin path failed, which is the path with no UI to show an error in.
+Fix: ADR-017 — point Dart at `sqlite3mc` instead, which ships `libsqlite3mc.so`, and switch it into
+  SQLCipher 4 compatibility with `PRAGMA cipher='sqlcipher'; PRAGMA legacy=4;`. Different filenames,
+  both libraries ship, each runtime loads the one it can call.
+Rule: when two runtimes in one app each bring their own copy of the same native library, check the
+  packaged `.so` names before anything else — `unzip -l` on the APK answers in one second what an
+  `UnsatisfiedLinkError` stack trace does not. And verify the *engine-free* path explicitly: it is
+  the one that cannot report its own failure.
+```
+
+```
+[L-011] Encryption that silently does nothing looks exactly like encryption that works
+What broke / went wrong: Nothing did — but it nearly could have. Stock SQLite accepts
+  `PRAGMA key`, `PRAGMA cipher` and `PRAGMA legacy`, ignores all three, and writes a perfectly
+  readable database. Every layer above believes the store is encrypted, every test passes, and the
+  defect is invisible until someone pulls the file.
+Rule: a security property that produces no visible difference when absent must be **asserted at
+  runtime**, not configured and trusted. Both runtimes now check the cipher is real on every open
+  (`PRAGMA cipher` in Dart, `PRAGMA cipher_version` in Kotlin) and refuse to write otherwise; the
+  cost is one pragma, and the alternative is shipping plaintext while claiming otherwise. The
+  cheapest end-to-end proof is still `head -c 16` on the file: a plaintext SQLite database starts
+  with the ASCII `SQLite format 3`, and an encrypted one starts with noise.
+```
+
+```
+[L-012] `flutter test` said the feature worked; the device said which half
+What broke / went wrong: 183 green tests, a clean analyzer and a successful APK build, and the app
+  still crashed on its first native capture ([L-010]) and pushed an onboarding CTA below the fold on
+  a real 1080×2400 screen. Both were found in the first ten minutes on an emulator.
+Why: the suite mocks the method channel, so it exercises the Dart side of every native boundary and
+  none of the native side — [D-5] in the iteration-9 plan, still true. And it renders at a synthetic
+  window size with a substituted font ([L-009]), so it cannot see a layout that merely does not fit.
+Rule: for this app, "verified" means an emulator walk-through, not a green suite. Both classes of
+  defect here — a cross-runtime native failure and a screen that does not fit — are structurally
+  invisible to `flutter test`, and both are the kind a user meets in the first minute.
+```
+
 ### 13.5 Test & verification log
 | Date | What was tested | Result | Notes |
 |---|---|---|---|
 | 2026-07-08 | `flutter analyze` | ✅ 0 issues | Iteration 1. |
+| 2026-09-01 | `flutter analyze` (Iteration 9, items 1–2) | ✅ 0 issues | |
+| 2026-09-01 | `flutter test` | ✅ 165/165 | Was 125. +7 PBKDF2 (RFC 8018 vectors, salt uniqueness, stored cost), +22 lock policy (verdicts, cooldown escalation, disable, biometric flag), +12 onboarding flow, +6 lock gate. |
+| 2026-09-01 | `flutter build apk --debug` | ✅ exit 0 (71s) | Confirms the new Kotlin (`identity/BiometricGate`, `identity/DeviceReliability`, awaited POST_NOTIFICATIONS result) compiles. |
+| 2026-09-01 | `flutter analyze` (Iteration 9, items 3–7) | ✅ 0 issues | |
+| 2026-09-01 | `flutter test` | ✅ 183/183 | +10 aging & export policy, +8 retirement/erase over a real in-memory store. |
+| 2026-09-01 | **Encrypted store, both runtimes, on an Android 14 emulator** | ✅ | File header is random, not `SQLite format 3`. A Share Sheet capture with no Flutter engine created and wrote the encrypted DB; the Flutter UI then read all five rows back (XP 50/250). |
+| 2026-09-01 | Capture speed with SQLCipher | ✅ 9–15 ms warm | From `capture_ms` in the event log: 397, 147, 15, 10, 9. The first includes creating the database and generating the Keystore key. §9.2's 2s budget is intact. |
+| 2026-09-01 | Onboarding, profile, PIN lock — full walk on device | ✅ | All four steps, permission dialog awaited correctly, reliability checklist re-ticked Notifications after the grant, PIN set + confirmed, app relocked on restart, wrong PIN rejected, right PIN opened. |
+| 2026-09-01 | Export → share sheet → `tool/metrics.dart` | ✅ | 5 promises / 6 events exported, PIN redacted, FileProvider chooser offered Drive/Gmail/Nearby Share, metrics script parsed it. |
+| 2026-09-01 | Delete everything | ✅ | Typed confirmation required; wiped promises, events, profile and lock, and returned to onboarding. |
+| 2026-09-01 | Release build + R8 | ✅ | `app-arm64-v8a-release.apk` **26.8 MB** (was 20.8 MB — SQLCipher costs **+6.0 MB** on the shipping ABI). Installed and captured natively at 150 ms: R8 did not strip the `net.zetetic` JNI bindings. Note `--target-platform android-arm64` does **not** filter a Gradle dependency's jniLibs — the un-split APK carries `libsqlcipher.so` for all three ABIs (37 MB). `--split-per-abi` is the shipping path and does filter them. |
+| 2026-09-01 | Onboarding on a physical Poco / Samsung | ⬜ Not run | The acceptance criterion that gates the rest — a promise surviving a reboot — still needs the device. The reliability screen is the fix; it is unverified against real MIUI/One UI settings intents. |
 | 2026-07-08 | `flutter test` (Home smoke + reactive toggle) | ✅ 2/2 | |
 | 2026-07-08 | `flutter build apk --debug` | ✅ built | AGP 9.0.1 / Gradle 9.1 / Kotlin 2.3.20. |
 | 2026-07-08 | Native splash → Home handoff (emulator API 34) | ✅ | Video plays pre-engine; no flash into Home. |

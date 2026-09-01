@@ -131,4 +131,25 @@ class DriftIntentionRepository implements IntentionRepository {
 
   @override
   Future<void> deleteIntention(int id) => _dao.deleteIntention(id);
+
+  @override
+  Future<List<int>> retireStale({
+    required DateTime cutoff,
+    required DateTime at,
+    required String reason,
+  }) => _dao.retireStale(cutoff: cutoff, at: at, reason: reason);
+
+  @override
+  Stream<List<Intention>> watchRetiredSince(DateTime since, String reason) =>
+      _dao.watchRetiredSince(since, reason);
+
+  @override
+  Future<List<Intention>> allForExport() => _dao.allForExport();
+
+  @override
+  Future<List<IntentionEvent>> allEventsForExport() =>
+      _dao.allEventsForExport();
+
+  @override
+  Future<void> eraseEverything() => _dao.eraseEverything();
 }

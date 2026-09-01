@@ -65,14 +65,19 @@ internal object ReminderScheduler {
     fun rescheduleAll(context: Context): Int {
         val now = System.currentTimeMillis()
         val pending = CyaStore(context).pendingReminders()
-        for (promise in pending) {
+        // A promise past the snooze limit belongs to the digest, and ReminderReceiver deliberately
+        // shows nothing for it. Re-arming it anyway meant every app resume queued an alarm that
+        // fired silently and wrote a `resurfaced` event — an endless loop polluting the very log
+        // that gamification and metrics are projected from (ADR-013, defect D-2).
+        val armable = pending.filter { it.snoozeCount < CyaStore.MAX_SNOOZES }
+        for (promise in armable) {
             val at = promise.reminderAtMillis ?: continue
             schedule(context, promise.id, if (at < now) now + CATCH_UP_DELAY_MILLIS else at)
         }
         // The weekly review rides along: one place that guarantees both kinds of alarm exist.
         DigestScheduler.scheduleNext(context, now)
-        Log.i(TAG, "rescheduled count=${pending.size}")
-        return pending.size
+        Log.i(TAG, "rescheduled count=${armable.size} skipped=${pending.size - armable.size}")
+        return armable.size
     }
 
     private fun pendingIntent(context: Context, intentionId: Long, flags: Int): PendingIntent? {

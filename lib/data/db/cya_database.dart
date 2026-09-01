@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../native/database_key_port.dart';
 import '../dao/intention_dao.dart';
 import '../dao/preference_dao.dart';
 import 'tables.dart';
@@ -153,11 +154,21 @@ class CyaDatabase extends _$CyaDatabase {
   }
 }
 
-/// Opens the shared database file.
+/// Opens the shared database file, encrypted (ADR-010).
 ///
 /// Application-support is used (not the cache or a Flutter-private location)
 /// because it maps to app-private storage the native layer can reach with
 /// `context.filesDir` on Android.
+///
+/// The key comes from the native side, which owns the Android Keystore and has
+/// already converted any pre-encryption file by the time this runs — the Share
+/// Sheet path can create and migrate this database without Flutter ever
+/// starting, so Dart is the second reader here, never the owner.
+///
+/// Where there is no native side — `flutter test`, the desktop builds — the
+/// database opens unencrypted. That is a deliberate, narrow fallback: those
+/// targets have no Keystore to protect a key with, and a test suite that
+/// cannot open its own fixture protects nothing at all.
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
     final directory = await getApplicationSupportDirectory();
@@ -165,6 +176,43 @@ LazyDatabase _openConnection() {
       '${directory.path}${Platform.pathSeparator}'
       '${CyaDatabase.databaseFileName}',
     );
-    return NativeDatabase.createInBackground(file);
+
+    final key = await const DatabaseKeyPort().rawKey();
+    if (key == null) return NativeDatabase.createInBackground(file);
+
+    return NativeDatabase.createInBackground(
+      file,
+      setup: (database) {
+        // Order matters, and all three must precede any other statement:
+        // SQLite3 Multiple Ciphers picks its scheme *before* the key is
+        // applied, and decides whether a file is encrypted when the first
+        // page is read.
+        //
+        // `sqlcipher` + `legacy = 4` is what makes this byte-compatible with
+        // the SQLCipher 4 database the Kotlin capture path writes — without
+        // them the default ChaCha20 scheme would produce a file the native
+        // side cannot open, and the failure would only show up the first time
+        // someone shared into the app.
+        database.execute("PRAGMA cipher = 'sqlcipher'");
+        database.execute('PRAGMA legacy = 4');
+        database.execute('PRAGMA key = "$key"');
+
+        // Fail loudly if this build linked a library with no encryption at
+        // all. It is the one mistake in this feature with no symptom — stock
+        // SQLite accepts every pragma above, ignores them, and writes a
+        // perfectly readable database that every layer above believes is
+        // encrypted. Cheap enough to run on every open, and the alternative
+        // is shipping plaintext while claiming otherwise.
+        final rows = database.select('PRAGMA cipher');
+        final cipher = rows.isEmpty ? '' : '${rows.first.values.firstOrNull}';
+        if (cipher.isEmpty || cipher == 'null') {
+          throw StateError(
+            'The store was opened without encryption: PRAGMA cipher is empty. '
+            'Refusing to write promises to a plaintext file. Check '
+            '`hooks: user_defines: sqlite3: source: sqlite3mc` in pubspec.yaml.',
+          );
+        }
+      },
+    );
   });
 }

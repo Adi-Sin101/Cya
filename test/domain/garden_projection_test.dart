@@ -26,6 +26,62 @@ void main() {
       expect(scene.streakDays, 0);
     });
 
+    // ADR-011: the Garden shows a kept-rate instead of a streak, because a
+    // streak resets on a calm week and Cya! is a trusted utility, not a habit.
+    group('kept-rate', () {
+      IntentionEvent captured(int intentionId, DateTime at) => IntentionEvent(
+        id: 1000 + intentionId,
+        intentionId: intentionId,
+        type: IntentionEventType.captured,
+        occurredAt: at,
+      );
+
+      test('is null until something has been captured', () {
+        expect(
+          GardenProjection.build(const <IntentionEvent>[], now).keptRate,
+          isNull,
+        );
+      });
+
+      test('is 0 when promises were captured but none kept', () {
+        final scene = GardenProjection.build(<IntentionEvent>[
+          for (var i = 1; i <= 7; i++) captured(i, DateTime(2026, 3, 3, 9)),
+        ], now);
+        expect(scene.totalCaptured, 7);
+        expect(scene.keptRate, 0);
+        // No plants, but the rate can still answer honestly.
+        expect(scene.isEmpty, isTrue);
+      });
+
+      test('is kept over captured', () {
+        final scene = GardenProjection.build(<IntentionEvent>[
+          for (var i = 1; i <= 4; i++) captured(i, DateTime(2026, 3, 2, 9)),
+          resolved(1, DateTime(2026, 3, 3, 10)),
+          resolved(2, DateTime(2026, 3, 3, 11)),
+          resolved(3, DateTime(2026, 3, 4, 9)),
+        ], now);
+        expect(scene.totalCaptured, 4);
+        expect(scene.totalGrowths, 3);
+        expect(scene.keptRate, 0.75);
+      });
+
+      test(
+        'does not reset after a quiet day, unlike the streak it replaced',
+        () {
+          // Everything captured and kept last week; nothing since.
+          final events = <IntentionEvent>[
+            captured(1, DateTime(2026, 2, 24, 9)),
+            captured(2, DateTime(2026, 2, 24, 9)),
+            resolved(1, DateTime(2026, 2, 24, 10)),
+            resolved(2, DateTime(2026, 2, 24, 11)),
+          ];
+          final scene = GardenProjection.build(events, now);
+          expect(scene.streakDays, 0, reason: 'the streak is long broken');
+          expect(scene.keptRate, 1.0, reason: 'the record still stands');
+        },
+      );
+    });
+
     test('only kept promises become plants', () {
       final events = <IntentionEvent>[
         resolved(1, DateTime(2026, 3, 3, 10)),

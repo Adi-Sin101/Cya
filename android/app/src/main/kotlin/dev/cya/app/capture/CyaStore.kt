@@ -2,8 +2,8 @@ package dev.cya.app.capture
 
 import android.content.ContentValues
 import android.content.Context
-import android.database.sqlite.SQLiteDatabase
 import android.os.SystemClock
+import net.zetetic.database.sqlcipher.SQLiteDatabase
 import java.io.File
 
 /**
@@ -106,6 +106,31 @@ internal class CyaStore(private val context: Context) {
                 db.logEvent(
                     id,
                     CyaDatabaseContract.EVENT_RESOLVED,
+                    atMillis,
+                    """{"surface":"notification"}""",
+                )
+                true
+            }
+        }
+    }
+
+    /**
+     * Let a promise go — the exit the snooze limit needs (PRD §5.6, ADR-013).
+     *
+     * Past the limit Cya! stops offering "later", so the notification must offer a way *out* that
+     * is not "Done". Archiving is reversible and keeps the promise findable; deleting it would
+     * break the one guarantee the product makes (§1.3 — never lose it).
+     */
+    fun archive(id: Long, atMillis: Long): Boolean = open().use { db ->
+        db.transaction {
+            val promise = db.readPromise(id)
+            if (promise == null || !promise.isPending) {
+                false
+            } else {
+                db.setStatus(id, CyaDatabaseContract.STATUS_ARCHIVED, atMillis)
+                db.logEvent(
+                    id,
+                    CyaDatabaseContract.EVENT_ARCHIVED,
                     atMillis,
                     """{"surface":"notification"}""",
                 )
@@ -262,9 +287,9 @@ internal class CyaStore(private val context: Context) {
      * other runtime opens it without migrating.
      */
     private fun open(): SQLiteDatabase {
-        val file = databaseFile(context)
-        file.parentFile?.mkdirs()
-        val db = SQLiteDatabase.openOrCreateDatabase(file, null)
+        // Encrypted at rest, with a raw key so the open stays cheap enough for the capture path
+        // (ADR-010). Converts a pre-encryption file on first touch.
+        val db = DatabaseCipher.open(context, databaseFile(context))
         db.execSQL("PRAGMA foreign_keys = ON")
         when {
             db.version == 0 -> {

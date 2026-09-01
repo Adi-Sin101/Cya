@@ -54,12 +54,23 @@ class NotificationActionReceiver : BroadcastReceiver() {
                 CyaWidgetProvider.refresh(context)
                 Log.i(TAG, "notification_snooze id=$id granted=$snoozed")
             }
+
+            ACTION_LET_GO -> {
+                // The way out of the snooze limit (ADR-013). Archive, not delete: the promise stays
+                // findable, because "never lose it" is the whole product (§1.3).
+                val archived = store.archive(id, now)
+                ReminderNotifications.dismiss(context, id)
+                ReminderScheduler.cancel(context, id)
+                CyaWidgetProvider.refresh(context)
+                Log.i(TAG, "notification_let_go id=$id archived=$archived")
+            }
         }
     }
 
     companion object {
         const val ACTION_DONE = "dev.cya.app.action.DONE"
         const val ACTION_SNOOZE = "dev.cya.app.action.SNOOZE"
+        const val ACTION_LET_GO = "dev.cya.app.action.LET_GO"
 
         /** Mirrors `SnoozePolicy.defaultSnooze`. */
         private const val DEFAULT_SNOOZE_MILLIS = 3L * 60 * 60 * 1000

@@ -32,6 +32,10 @@ class _CyaBootstrapState extends ConsumerState<CyaBootstrap> {
     // Watched, not awaited: the UI must never wait on it, and it must never
     // touch the capture path (§3.2).
     ref.watch(enrichmentPassProvider);
+    // Promises nobody has touched in a month retire themselves (ADR-014), so
+    // the pending list stops growing monotonically and the digest stops
+    // reading a backlog back at the user.
+    ref.watch(retirementPassProvider);
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 220),
       switchInCurve: Curves.easeOutCubic,

@@ -92,4 +92,24 @@ abstract interface class IntentionRepository {
 
   /// Permanent deletion, including the promise's event log (PRD §3.5).
   Future<void> deleteIntention(int id);
+
+  /// Archives every pending promise untouched since [cutoff] (ADR-014),
+  /// returning their ids so their alarms can be cancelled.
+  Future<List<int>> retireStale({
+    required DateTime cutoff,
+    required DateTime at,
+    required String reason,
+  });
+
+  /// Promises retired automatically since [since] — what the digest offers to
+  /// bring back.
+  Stream<List<Intention>> watchRetiredSince(DateTime since, String reason);
+
+  /// Everything, archived included, for the data export (PRD §9.3).
+  Future<List<Intention>> allForExport();
+
+  Future<List<IntentionEvent>> allEventsForExport();
+
+  /// Erases every promise and every event (PRD §9.3).
+  Future<void> eraseEverything();
 }

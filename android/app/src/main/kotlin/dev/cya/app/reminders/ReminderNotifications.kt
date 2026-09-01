@@ -24,6 +24,12 @@ internal object ReminderNotifications {
     const val CHANNEL_QUIET = "cya_reminders_quiet"
     const val CHANNEL_BANNER = "cya_reminders_banner"
 
+    /** Every due-promise notification joins this group so the shade shows one card, not N. */
+    private const val GROUP_REMINDERS = "dev.cya.app.reminders"
+
+    /** Distinct from any promise id (they are row ids) and from the digest's 80_000. */
+    private const val SUMMARY_ID = 70_000
+
     enum class Tier(val wire: String) { QUIET("quiet"), BANNER("banner"), DIGEST("digest") }
 
     /** Mirrors `SnoozePolicy.tierFor` exactly. */
@@ -83,6 +89,11 @@ internal object ReminderNotifications {
             .setContentIntent(openPromiseIntent(context, promise.id))
             .setAutoCancel(true)
             .setCategory(Notification.CATEGORY_REMINDER)
+            // Capture is frictionless by design, so a good day produces several promises due at
+            // the same preset time. Grouping keeps that from becoming a wall of separate
+            // interruptions, while each child keeps its own one-tap actions (ADR-012).
+            .setGroup(GROUP_REMINDERS)
+            .setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
             // One tap to close the loop, without opening the app (PRD §3.4/§8.4).
             .addAction(
                 action(context, promise.id, NotificationActionReceiver.ACTION_DONE, "Done"),
@@ -97,16 +108,66 @@ internal object ReminderNotifications {
                             "Snooze",
                         ),
                     )
+                } else {
+                    // Past the limit the copy asks the user to "finish it, or let it go" — so the
+                    // notification has to actually offer letting go (ADR-013). Without this the
+                    // only exit is opening the app and hunting for archive.
+                    addAction(
+                        action(
+                            context,
+                            promise.id,
+                            NotificationActionReceiver.ACTION_LET_GO,
+                            "Let it go",
+                        ),
+                    )
                 }
             }
             .build()
 
         manager.notify(promise.id.toInt(), notification)
+        refreshSummary(context, manager)
     }
 
     fun dismiss(context: Context, intentionId: Long) {
-        context.getSystemService(NotificationManager::class.java)
-            ?.cancel(intentionId.toInt())
+        val manager = context.getSystemService(NotificationManager::class.java) ?: return
+        manager.cancel(intentionId.toInt())
+        // The summary counts what is still in the shade, so it has to be recomputed whenever a
+        // child leaves — otherwise it keeps claiming promises the user already dealt with.
+        refreshSummary(context, manager)
+    }
+
+    /**
+     * Keeps one summary card over the reminder group (ADR-012).
+     *
+     * Below two children there is nothing to summarise and a lone promise reads better on its own,
+     * so the summary is cancelled rather than shown over a single card. The summary never alerts —
+     * `GROUP_ALERT_CHILDREN` on the children means the buzz already happened.
+     */
+    private fun refreshSummary(context: Context, manager: NotificationManager) {
+        val children = runCatching {
+            manager.activeNotifications.count { posted ->
+                posted.id != SUMMARY_ID && posted.notification.group == GROUP_REMINDERS
+            }
+        }.getOrDefault(0)
+
+        if (children < 2) {
+            manager.cancel(SUMMARY_ID)
+            return
+        }
+
+        manager.notify(
+            SUMMARY_ID,
+            Notification.Builder(context, CHANNEL_QUIET)
+                .setSmallIcon(R.drawable.ic_stat_cya)
+                .setContentTitle("$children promises are waiting")
+                .setContentText("Whenever you're ready.")
+                .setGroup(GROUP_REMINDERS)
+                .setGroupSummary(true)
+                .setGroupAlertBehavior(Notification.GROUP_ALERT_CHILDREN)
+                .setContentIntent(openAppIntent(context))
+                .setAutoCancel(true)
+                .build(),
+        )
     }
 
     /** Tapping the body deep-links straight to the promise (PRD §8.2 resurface screen). */
@@ -119,6 +180,19 @@ internal object ReminderNotifications {
         return PendingIntent.getActivity(
             context,
             intentionId.toInt(),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
+    /** The summary card opens the app rather than any one promise. */
+    private fun openAppIntent(context: Context): PendingIntent {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(
+            context,
+            SUMMARY_ID,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )

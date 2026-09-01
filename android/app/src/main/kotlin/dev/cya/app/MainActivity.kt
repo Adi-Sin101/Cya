@@ -8,6 +8,11 @@ import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import dev.cya.app.identity.BiometricGate
+import dev.cya.app.identity.DatabaseKey
+import dev.cya.app.identity.DeviceReliability
+import dev.cya.app.privacy.DocumentShare
+import dev.cya.app.reminders.DraftHandoff
 import dev.cya.app.reminders.ReminderNotifications
 import dev.cya.app.reminders.ReminderScheduler
 import io.flutter.embedding.android.FlutterActivity
@@ -17,14 +22,25 @@ import io.flutter.plugin.common.MethodChannel
 /**
  * The Flutter host.
  *
- * It owns exactly two bridges, both of which exist so the app and the native surfaces agree:
- * scheduling (the app must use the *same* AlarmManager the capture path uses) and deep links from a
- * reminder notification into the promise it is about.
+ * Every bridge here exists because the app and the native surfaces have to agree about something:
+ * scheduling (the app must use the *same* AlarmManager the capture path uses), deep links from a
+ * reminder notification into the promise it is about, whether this device will let an alarm fire at
+ * all (PRD §12), and the biometric prompt behind the app lock (ADR-010).
  */
 class MainActivity : FlutterActivity() {
 
     private var channel: MethodChannel? = null
     private var pendingDeepLink: String? = null
+
+    /**
+     * The in-flight notification permission request.
+     *
+     * Held because the system answer arrives on a different callback than the one that asked, and
+     * onboarding shows a permission screen that has to reflect the real outcome — replying
+     * "denied" the moment the dialog opens, as the first version did, made every first grant look
+     * like a refusal.
+     */
+    private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -64,7 +80,52 @@ class MainActivity : FlutterActivity() {
                     "canScheduleExact" -> result.success(canScheduleExactAlarms())
 
                     "ensureNotificationPermission" ->
-                        result.success(ensureNotificationPermission())
+                        ensureNotificationPermission(result)
+
+                    // --- Local identity + device reliability (ADR-010, PRD §12) ---
+
+                    "deviceReliability" ->
+                        result.success(DeviceReliability.snapshot(this))
+
+                    "openAutostartSettings" ->
+                        result.success(DeviceReliability.openAutostart(this))
+
+                    "openBatterySettings" ->
+                        result.success(DeviceReliability.openBatterySettings(this))
+
+                    "openAppSettings" ->
+                        result.success(DeviceReliability.openAppSettings(this))
+
+                    // The raw SQLCipher key for the shared store (ADR-010). Kotlin owns it
+                    // because Kotlin owns the Android Keystore; Dart needs the same bytes to
+                    // open the same file. It never leaves the process — there is no network
+                    // permission for it to leave through.
+                    "databaseKey" -> result.success(DatabaseKey.rawKey(this))
+
+                    "biometricAvailability" ->
+                        result.success(BiometricGate.availability(this))
+
+                    "biometricAuthenticate" -> BiometricGate.authenticate(
+                        activity = this,
+                        title = call.argument<String>("title") ?: "Unlock Cya!",
+                        subtitle = call.argument<String>("subtitle") ?: "",
+                        negativeLabel = call.argument<String>("negative") ?: "Use PIN",
+                        onResult = result::success,
+                    )
+
+                    // --- Data export (PRD 9.3) ---
+
+                    "shareDocument" -> result.success(
+                        DocumentShare.share(
+                            activity = this,
+                            fileName = call.argument<String>("fileName")
+                                ?: "cya-export.json",
+                            content = call.argument<String>("content").orEmpty(),
+                            mimeType = call.argument<String>("mimeType")
+                                ?: "application/json",
+                            title = call.argument<String>("title") ?: "Your Cya! data",
+                        ),
+                    )
 
                     "openExactAlarmSettings" -> {
                         openExactAlarmSettings()
@@ -79,6 +140,18 @@ class MainActivity : FlutterActivity() {
                         val link = call.argument<String>("link")
                         result.success(link != null && openExternal(link))
                     }
+
+                    // Opens the source app with the reply already written (ADR-015).
+                    // Cya! never sends it — see DraftHandoff for why that is a
+                    // product decision, not a platform limitation we regret.
+                    "openDraft" -> result.success(
+                        DraftHandoff.open(
+                            context = this,
+                            draft = call.argument<String>("draft").orEmpty(),
+                            packageName = call.argument<String>("package"),
+                            link = call.argument<String>("link"),
+                        ),
+                    )
 
                     // The launcher icon of the app a promise was shared from, as PNG bytes.
                     // Dart caches these; see AppIconCache.
@@ -150,23 +223,44 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * Asks for POST_NOTIFICATIONS the first time it matters — the app calls this right after a
-     * capture, when the reason ("I'll bring this back tonight") is on screen (PRD §3.5).
+     * Asks for POST_NOTIFICATIONS at a moment when the reason for it is on screen — after a
+     * capture, or on the onboarding step that shows the reminder it would post (PRD §3.5).
+     *
+     * Replies only once the user has answered. A second request while one is in flight resolves
+     * the first as denied rather than leaking it, so no caller is left awaiting forever.
      */
-    private fun ensureNotificationPermission(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+    private fun ensureNotificationPermission(result: MethodChannel.Result) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            result.success(true)
+            return
+        }
         val permission = android.Manifest.permission.POST_NOTIFICATIONS
-        val granted = checkSelfPermission(permission) ==
+        if (checkSelfPermission(permission) ==
             android.content.pm.PackageManager.PERMISSION_GRANTED
-        if (!granted) requestPermissions(arrayOf(permission), NOTIFICATION_PERMISSION_REQUEST)
-        return granted
+        ) {
+            result.success(true)
+            return
+        }
+        pendingPermissionResult?.success(false)
+        pendingPermissionResult = result
+        requestPermissions(arrayOf(permission), NOTIFICATION_PERMISSION_REQUEST)
     }
 
-    private fun canScheduleExactAlarms(): Boolean {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return true
-        val manager = getSystemService(android.app.AlarmManager::class.java)
-        return manager?.canScheduleExactAlarms() ?: false
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != NOTIFICATION_PERMISSION_REQUEST) return
+        val granted = grantResults.isNotEmpty() &&
+            grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED
+        pendingPermissionResult?.success(granted)
+        pendingPermissionResult = null
     }
+
+    private fun canScheduleExactAlarms(): Boolean =
+        DeviceReliability.canScheduleExactAlarms(this)
 
     private fun openExactAlarmSettings() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return

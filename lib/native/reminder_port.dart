@@ -54,6 +54,30 @@ class ReminderPort {
   Future<bool> openLink(String link) async =>
       await _invoke<bool>('openLink', <String, Object?>{'link': link}) ?? false;
 
+  /// Opens [packageName] (or [link]) with [draft] already in the compose box —
+  /// the deliverable half of "scheduled replies" (ADR-015).
+  ///
+  /// Android exposes **no public API to send a message in a third-party app**,
+  /// and every workaround is either restricted (`SEND_SMS`), the private-app
+  /// scraping §3.5 forbids (`NotificationListenerService` + `RemoteInput`), or
+  /// a Play policy violation (`AccessibilityService`). So Cya! prepares the
+  /// message and the user sends it — which is also the better product, because
+  /// under a trusted-utility framing "never lost" fails safely and "sent on
+  /// your behalf" does not.
+  ///
+  /// Returns whether anything opened.
+  Future<bool> openDraft({
+    required String draft,
+    String? packageName,
+    String? link,
+  }) async =>
+      await _invoke<bool>('openDraft', <String, Object?>{
+        'draft': draft,
+        'package': packageName,
+        'link': link,
+      }) ??
+      false;
+
   /// [packageName]'s launcher icon as PNG bytes, or `null` when that app is
   /// not installed (or the platform has no such concept).
   ///
