@@ -278,6 +278,13 @@ class IntentionEvents extends Table {
 **Brand character:** the beaver mascot ("I'll remember for you") appears in reward/empathy moments — never on the capture path.
 
 ### 8.2 Screens (from approved mockups)
+
+Approved extension,16 October2026 (ADR-026): the creator explicitly replaces the
+routine/review UI with a graphical Rhythm main tab and dedicated focus room.
+Current destinations are Home, Promises, Rhythm, Garden, Profile, plus a distinct
+capture action with reserved navigation-bar space. Original mockup descriptions
+below document the earlier baseline; they do not prohibit this approved tab.
+Preserve sage/mint, Plus Jakarta Sans, clear states and reduced-motion support.
 **Home**
 - Greeting ("Good Evening, Arif 👋", "Future you is proud of today.") + level badge (Level 12 · Future Builder · 2,450 / 3,000 XP).
 - **Today** card: count of promises + completed ring (e.g., 8 promises, 6 completed).
@@ -412,10 +419,21 @@ All derived from the event log (7.1).
 > This is the AI's written testament. Keep it current: what's implemented, what works, what doesn't, what broke, and the lesson. Later phases get easier because this stays accurate.
 
 ### 13.1 Module / feature status
+Iteration22 (2026-10-23): comprehensive synthetic emulator QA and two regression
+fixes are recorded in `docs/qa/Emulator_QA_2026-10-23.md`. That dated report is
+the current verification boundary; historical rows below retain their original
+dates and must not be interpreted as fresh certification of every revamp phase.
+
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-known-issues · 🟥 blocked
 
 | Module | Status | Last updated | Working? | Notes / known issues |
 |---|---|---|---|---|
+| Revamp memories / required semantics | Integrated; broader release acceptance open | 2026-10-16 | Host, emulator, A52 app and real speech probe | Schema8 original text/audio/history, async required real-model index/retrieval/reviewed links, portable restore, focus and explicit branches/organization. Actual airplane app retrieval and20 public speech sources/60 positive queries pass on A52. Seed Banglish6/10 and larger held-out/spontaneous speech, relatedness and sustained-resource gates remain open. |
+| Garden Home/Profile doorway and Profile visualization | Implemented,6015 installed | 2026-10-17 | Full289; analyzer0; synthetic previews2/2 | Illustrated event-backed Garden entries and back navigation; XP/avatar ring, badge milestones, settings retained. No schema/model/native change; final physical GUI awaits normal app unlock. |
+| Memory / voice navigation and visuals | Implemented; release validation | 2026-10-16 | Full285; workflow14; analyzer0; native8 | Main Memories tab, visible Record voice/Write a thought, global capture chooser, original audio cards, full-screen editor, accepted-link map/list, model/data tools. Home/Focus wake index after commit. Schema8/format8 unchanged; 6014 installed on A52; final UI smoke pending existing app unlock. |
+| Rhythm / routines / optional review / focus | Implemented; earlier A52 focus smoke passed; final UI device checks pending | 2026-10-16 | Full274 tests, analyzer0, release ARM64/x64 | Fifth main tab, graphical day/week, immutable routines and explicit recovery, optional Memory-backed reviews, persisted focus clock and shared capture. Schema8/format8; no new alarm/model startup/network dependency. A52 baseline routine/offline checks pass; new6012 release installed preserving data. |
+| Revamp foundation preflight (Iteration 10) | Bounded unit complete | 2026-10-15 | Tested | Android key failures fail closed; resume refreshes shared-table streams and cached search. Schema v2 unchanged; 189 tests, analyzer and debug APK pass. Audit and ADR-018 govern extension; proposed v3 migration awaits explicit approval. Required memory/audio/EmbeddingGemma 2 features are not yet integrated. |
+| Development environment after drive relocation | Android verified | 2026-10-15 | Yes for Android | Restored Flutter 3.44.4 / Dart 3.12.2 at `C:\Flutter\flutter`; Android SDK remains at `D:\Android`. Locked dependencies resolve, analysis is clean, 183 tests pass, debug and per-ABI release APKs build, and onboarding/native capture run on the emulator. Windows desktop requires Visual Studio C++ tooling. |
 | Project scaffold & layering | ✅ | 2026-07-08 | Yes | core/domain/data/presentation layering in place (Iteration 1). |
 | Theming (light/dark, Plus Jakarta Sans) | ✅ | 2026-08-31 | Yes | M3 light+dark from §8.1; PJS bundled. Iteration 6: type scale enlarged (display 44/36 → label 12), motion/spacing/radius tokens, status **ink** variants so warning/error/success pass 4.5:1 as text (ADR-009), edge-to-edge system bars. |
 | Drift DB + schema + migrations | ✅ | 2026-08-31 | Yes | **v2**: adds `intentions.source_package`. Both runtimes carry the upgrade (`onUpgrade` / `CyaDatabaseContract.upgradeStatements`); a v1→v2 migration test asserts old rows survive. Contract in docs/native_db_contract.md. |
@@ -447,7 +465,91 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
 
 ### 13.2 Current session log
+
+2026-10-23 / Iteration22: isolated API34 production-UI QA records27 distinct
+passing cases, including original voice save/playback/recovery, multilingual
+keyword search, history/branch, routines/focus, actual native share/tile/widget
+and scheduled promise notification/Done. Fixed completed-promise false urgency
+and lost occurrence context when reopening routine focus, each with red-to-green
+regression coverage. No schema, dependency or capture-path changes. Final exact
+checks/artifacts and remaining gates are maintained in the dated QA report.
+Creator requested at least6–7 meaningful commits, author Adi-Sin101, no coauthor,
+and an ordinary GitHub push; preserve personal-device data and existing history.
+
+2026-10-17: creator requests visual Garden presence on Home/Profile plus Profile
+visuals. Iteration21/ADR-030 adds shared painted doorway, bounded actual plants,
+XP/avatar ring and event-backed badge milestones; all controls retained. Full289
+Flutter tests54s, analyzer0/7.8s. A526014 navigation/recorder entry smoke passed
+after unlock without mic start. Normal6015 release passed116.1s and installed in place on A52; final physical GUI awaits normal app unlock.
+No schema/dependency/native/model change.
+
+
+2026-10-17: reconnected A52 authorized; exact verified release6014 installed in
+place, package version confirmed and MainActivity launched. Existing biometric
+prompt covers UI; user unlock requested before navigation smoke. No data clear,
+mic activation or new source/build change. Host evidence unchanged; phone GUI
+checks remain pending, not passed. See BUILD_LOG and implementation status.
+
+
+2026-10-16: Iteration20 makes the memory/voice product reachable. Five preserved
+Home/Memories/Rhythm/Promises/Profile tabs; Garden retained through Home/Profile.
+Visible voice/text capture on Home and Memories; corner + chooses voice/text/
+promise. Coherent visual recorder, full-screen thought editor, original-duration
+journal cards, accepted-link map plus list, topics/model/import/storage views.
+Home/Focus captures wake indexing only after durable commit; worker lifecycle
+follows its lazy creation. No schema/dependency/native capture change. Full285
+Flutter tests47s; final voice/memory/exploration14/14 in7s after permission-settings
+recovery; analyzer0 in7.6s;8 native tests0 failures/errors42s. Release4014 and phone
+installation status recorded in BUILD_LOG. A52 currently disconnected; no claim
+that the latest UI has passed physical recording/device acceptance. ADR-029 and
+Navigation_and_Release_Checklist.md record scope and remaining phase gates.
+
+
+2026-10-16 — Iterations16–19: shared schema8/format8 now delivers immutable
+connections/branches, routines/manual recovery, Memory-backed optional review,
+visual Rhythm main tab and a durable user-driven focus clock.274 tests and
+analyzer pass; normal release6012 installed in place. A52 day selection/completion,
+offline factual review and focus pause/leave/reopen/resume/end verified.20 public
+speech sources/60 positive queries verify direct local text→raw-audio retrieval
+with measured limits, not broad quality acceptance. Creator's latest correction
+restores the large centered hovering + above the five tabs (ADR-027); final
+placement package validation continues. Full evidence/limits in implementation
+status report and BUILD_LOG; no all-product-phases acceptance claim.
+
+2026-10-15 — User approved implementation of proposed migration. Iteration11
+delivers the typed-memory vertical slice in schema3, preserving promises and
+native capture. Analyzer clean;203 full tests plus1 new privacy integration pass;
+debug APK builds. Actual native-first emulator capture succeeds (cold migration
+1431ms, next60ms). Exact pinned model and SDK separately execute text and raw-audio
+256d finite vectors without ASR. One emulator run is not phone/quality acceptance.
+Iteration12 proceeds with required semantic integration; see BUILD_LOG for exact
+files/results, R8 warnings and recovery/device verification limits.
+
+2026-10-15 — Revamp preflight: established canonical extension PRD while preserving
+the supplied proposal; ADR-018 resolves scope conflicts explicitly. Fixed Android
+key-error fallback and native-write visibility with regression coverage. Current
+schema/dependencies/native capture remain unchanged. Exact Android model SDK
+inspection and a concrete additive migration proposal are ready for review;
+see `plans/iteration-10-revamp-foundation-preflight.md` and
+`plans/revamp-v3-memory-migration.md`. Phase 1 is not complete, and no A52/model
+performance or runtime offline verification is claimed.
+
 ```
+Session 2026-10-15 - Restore the checkout after moving from D: to C:
+- Cause: Flutter's old D: SDK directory no longer existed, while user PATH,
+  VS Code, IntelliJ SDK metadata, and generated build files still referenced it.
+- Restored the exact recorded Flutter 3.44.4 / Dart 3.12.2 SDK from the official
+  archive with SHA-256 verification. Repaired local paths, regenerated build
+  metadata, and preserved pubspec.lock and all application source.
+- User enabled Windows Developer Mode and reviewed the pending Android licenses;
+  locked pub get now succeeds and flutter doctor reports a healthy Android toolchain.
+- Analysis: zero issues. Tests: 183/183. Android debug and per-ABI release builds pass.
+  Emulator onboarding and native share capture verified; warm capture logged 106 ms.
+  ARM64 release remains 26.8 MB, matching the previous build log.
+- Lesson: relocation can break SDK discovery and generated absolute paths even
+  when the package cache is intact; restore the toolchain before changing packages.
+- Limit: Windows desktop tooling is absent. iOS builds require a macOS host.
+
 Session 2026-07-08 — Iteration 1 (foundation: theme, font, native video splash → Home)
 - Goal: Ship the app foundation — design system + Plus Jakarta Sans, a fully-native Android
   splash playing Cya_splash.mp4 before the Flutter engine boots, leading into the designed Home.
@@ -593,6 +695,210 @@ Session 2026-08-31 - Iteration 7 (home-screen widget: the last Phase 1 surface)
 ```
 
 ### 13.3 Decision log (ADR-lite)
+
+**ADR-030 (2026-10-17): Garden remains visually present outside tab navigation.**
+The creator approves retaining five main tabs but explicitly asks for an
+illustrated Home entrance to Garden and continued Profile access. Replace the
+text-only Home shortcut with a painted, tappable preview near the top; reuse
+it on Profile with a clear forward affordance. Actual event-derived growth only,
+preview capped at16 plants, one-shot growth without looping wind. Full Garden
+and week summary stay intact. Profile uses an XP/avatar ring and milestone
+progress circles from existing projections, with all settings/data tools retained.
+No new storage, tracking, inference, permission or schema change.
+
+**ADR-029 (2026-10-16): memory and voice are first-class navigation.**
+The creator reports that the implemented journal is effectively inaccessible.
+Use five preserved tabs: Home, Memories, Rhythm, Promises, Profile. Preserve
+Garden through labeled Home/Profile entries and existing week landscape, with
+back navigation. The corner + becomes a labeled voice/text/promise capture
+chooser; native share/tile/widget capture remains thin and unchanged. Home and
+Memories expose visible Record voice/Write thought actions. Never start a mic
+merely by opening a screen. Recording elapsed visuals represent actual time,
+not fabricated amplitude. Preserve versions, originals, recovery, semantic
+indexing and every existing memory operation. This explicit user instruction
+supersedes the earlier tab composition, not the promise/Garden product vision.
+
+**ADR-028 (2026-10-16): creator chooses compact bottom-right capture.**
+The latest feedback rejects the centered floating + as visually out of place.
+It supersedes ADR-027's placement: use a 48px rounded-square action at endFloat,
+16px from the trailing edge, solid theme primary/onPrimary with a soft shadow.
+All five navigation destinations remain. Preserve capture and haptics; reduced
+motion suppresses press scaling. Floating actions can cover a row on a short
+viewport; list bottom clearance and regression tests must prove the underlying
+promise completion and Profile rows remain reachable through scrolling.
+No persistence, native capture, model, dependency or schema changes.
+
+**ADR-027 (2026-10-16): explicit creator correction restores centered hovering +.**
+The creator rejects placing capture at the end of the navigation bar and requires
+it in the middle, hovering. This instruction supersedes ADR-026's temporary
+reserved-end action. Use the existing64px brand capture control at centerFloat
+above all five tabs; no tab/icon underneath it is hidden. Keep list bottom scroll
+clearance so lower content can be brought above the floating action. Navigation
+tests check horizontal centering and vertical separation, original promise capture
+and resolution, and reaching Profile achievements through actual scrolling.
+The day-path completed marker uses a vector check with onPrimary contrast and
+the shared type family. No capture/storage/model/schema behavior changes.
+
+**ADR-026 (2026-10-16): creator-approved visual Rhythm destination and focus clock.**
+The creator rejects the text-heavy routines/day/review UI and explicitly asks for
+its own tab, visual life planning and a proper focus mode matching Cya!'s aesthetic.
+Add a fifth preserved-state Rhythm branch without removing existing destinations.
+Graphical paths, day selection and weekly bars derive from actual saved plans and
+explicit outcomes; no work tracking, streaks or productivity scores. Recovery,
+version history and optional reviews remain progressively disclosed. Replace
+the long routine dialog with a full-screen editor and a quiet focus room.
+
+The timer reuses focus_sessions/focus_events and a focus_timer_v1 preference
+projection; no schema migration or second task engine. Start/pause/resume/stop
+and projection mutation commit together, with named timer events. Remaining time
+uses a persisted deadline, pauses hold remaining seconds, and stale rooms cannot
+end a changed priority. Expiry never completes work or silently ends focus.
+No alarm/speech/notification/inference is added. Capture reuses the existing
+composer and save-first return reminder. Portable format8 carries timer event
+types; device-local active-clock projection is excluded. Earlier format readers
+must refuse8 rather than misread new event vocabulary. Imported focus copies end
+as before. Native capture only sees unchanged plain focus table structures.
+
+An end-floating capture trial occluded a promise completion button in regression
+tests. Reserve a48px capture action in the bar instead. This is a specific
+correction from testing, not permission to remove the original capture flow.
+
+**ADR-025 (2026-10-16): explicit routine selections and retained review copies.**
+Schema8 extends the coordinated shared store with reusable routine versions,
+definition events, explicit dated occurrences and complete before/after occurrence
+events. Recurrence is availability, never automatic daily workload. A preferred
+same-day window is not an alarm. Existing promises retain the sole reminder
+engine. Completion/skip/defer/replan are explicit user actions; interruption does
+not infer failure. Soft removal pauses future availability and retains history;
+restoration remains paused until the person resumes it. Review prose uses Memory
+versions/events/semantic jobs instead of a second notes engine. Imported review
+copies use separate origin slots and remain in Memories without changing the
+current local daily/weekly review. Format7 validates/remaps complete histories.
+No new network permission, inference on capture, autonomous rescheduling or ASR.
+
+**ADR-020 (2026-10-15): versioned semantic derivations and historical connections.**
+Use the exact pinned EmbeddingGemma2 generic LiteRT-LM artifact with vision
+omitted, CPU2threads/float32 and256d L2-normalized vectors: actual text/raw-audio
+and minified-release probes establish that this path executes. This is the first
+measured configuration, not proof of A52 budgets or multilingual quality. Retain
+the official model-card search prefixes for initial app indexing; the runtime
+guide's alternate prefixes remain a benchmark comparison, not a silent change.
+Vector versions include artifact hash, runtime/configuration, dimension and
+preprocessing. Any change rebuilds derivations without changing source versions.
+Related suggestions reuse that index initially; quality must be measured.
+Accepted/dismissed connections retain exact revision endpoints and model origin,
+with transactional review events. A later edit must not retroactively change the
+context of an accepted connection. Original capture, keyword browsing and reminders
+do not depend on the model. Explicit local installation checks size/SHA256,
+including a first-use integrity check; no runtime download or content transmission.
+
+**ADR-021 (2026-10-15): audio storage protection is explicit and separate.**
+For the next original-voice slice, use standard managed16kHz mono PCM16 WAV files
+in app-private storage, outside SQLite. Existing SQLCipher validation covers the
+database only; initial audio files and user-shared archives are not encrypted.
+Disclose this before recording/export rather than extending the database's
+encryption claim to untested files. Standard WAV permits bounded original-audio
+playback/embedding and interruption recovery without a speculative cipher format.
+Attachment encryption remains a distinct conversion/security work item, not a
+claim already delivered. No upload/remote ASR/Android speech-service assumption.
+
+**ADR-022 (2026-10-16): source audio, privacy and portable restore.**
+Schema5 adds managed attachment metadata and a durable cleanup queue in both
+writers. Original WAV is finalized/fsynced and digest verified before the
+source/revision/event/job transaction acknowledges save. No ASR prerequisite.
+Audio indexing uses bounded20-second original segments, not captions. Deletion
+queues file cleanup transactionally; retries survive source removal/process death.
+The user's no-cloud/private-data constraint requires excluding app originals,
+SQLCipher key material and models from Android cloud backup/device transfer;
+allowBackup=false plus explicit extraction exclusions implement that constraint.
+This resolves the proposal's earlier separate-backup-policy decision without
+enabling a backup service. OEM behavior still needs physical-device validation.
+Version4 readable ZIP carries manifest/hash/originals. Restore validates first,
+then appends fresh identities and remapped history; current records/PIN/settings
+are never overwritten. No personal device migration or recovery claim until tested.
+
+**ADR-023 (2026-10-16): priorities have recorded sessions and preserved history.**
+Schema6 stores focus sessions and start/end events; switching/end and preference
+projection update are transactional. Legacy focus_priority is preserved as a
+legacy_observed session at migration, explicitly not its unknown original start.
+Format5 exports the full history. Import appends fresh identities; previously
+active imported sessions receive an explicit import_ended event, preserving
+history without replacing the local chosen priority. No surveillance, automatic
+priority, disruptive focus alarm or blocked app switch is introduced.
+
+**ADR-024 (2026-10-16): user-approved real routines and optional local review.**
+The user's newly supplied v2 PRD/execution prompt adds recurring routines and
+daily/weekly review to required Phase1 scope. Preserve its full original text in
+docs/revamp; append the approved delta to the canonical direction PRD/audit.
+Existing audit approval and continued implementation instruction resolve the
+proposal's stale audit-only starter: continue with a focused delta audit/plan.
+Focus sessions are not routines. Add explicit user-selected daily occurrences,
+immutable routine versions/event history and manual recovery; do not duplicate
+the promise/reminder engine. Existing promise XP/Garden remains; routines add
+no punitive streak or inferred work/completion. Reviews use only local recorded
+outcomes, can be skipped, and never silently rewrite plans or priorities.
+Finish the in-progress bounded connection change to a tested contract, then add
+the routine foundation in its own coordinated additive migration. No destructive
+conversion, inference/capture-path change or network capability is authorized.
+
+**Iteration14/15 evidence:** validated append-only portable import and focus
+history delivered. Full236 Flutter tests pass (71s); additional current focus,
+audio/import and memory UI subset18/18 (8s), including v4/v5 native/Dart-first
+fixtures and legacy observed-priority preservation. Analyzer0 issues before
+legacy-preservation SQL; final release and device UI checks continue. A52 now
+connected (SM-A525F, API34,7668936KiB physical RAM); Cya! absent on phone at
+first package check, so no existing personal app DB is being upgraded. Run the
+isolated model probe before product installation and record actual measurements.
+
+**Iteration12/13 evidence (2026-10-16):** SDK0.18.0 pinned generic model executes
+text and raw audio through the real Android bridge. R8 JNI stripping failure
+fixed with scoped keep and R8 9.1.56. Production schema4 release builds49.1MB
+ARM64/55.2MB x64 without weights, no INTERNET permission. Schema5 debug builds;
+225 Flutter tests and five native WAV/archive tests pass. Real airplane smoke
+indexes two text sources plus original WAV in17,072ms including cold loading,
+text query426ms, direct text-query-to-audio without transcript, checksum unchanged,
+and attachment deletion verified. Synthetic smoke is not speech-quality evidence.
+Seed Banglish Hit@1 .6 remains a required quality gap. No A52 connected or
+battery/thermal/phone measurements. Full commands/results are in BUILD_LOG.
+
+
+**ADR-019 (2026-10-15): approved staged memory migration and neutral capture.**
+The user's “start implementing the phases, go on” instruction approves the
+proposed migration design and continued phased work; do not ask for the same
+approval again. Implement/test small coordinated versions: v3 adds typed
+memories, revisions, events and durable jobs; attachments, relationships and
+vectors follow with their actual features. This avoids speculative tables.
+Current content is selected by highest per-memory revision number rather than
+a circular current-revision FK. Memory/revision IDs are UUIDv4 TEXT; existing
+promise integer IDs remain intact. Native and Drift creation/upgrades must agree.
+No source conversion, reminder/XP duplication or automatic retirement applies
+to neutral memories. Edits append immutable revisions, including the initial
+untrimmed text; optimistic revision checks prevent silent lost updates.
+Archive retains history; confirmed hard deletion removes every source-owned
+revision/event/job. New literal keyword fallback preserves Bangla marks; legacy
+promise FTS is unchanged. Focus chosen as a local preference is the initial
+return-prompt slice, not completion of versioned focus-session history.
+Exact Android SDK compatibility and actual offline inference remain required;
+durable jobs are not a substitute for the engine. No personal-phone migration
+over its only copy; fixtures/emulator precede recovery-tested physical rollout.
+
+**ADR-018 — Approved local memory extension and implementation boundary (2026-10-15).**
+The user's phased revamp instruction approves extending Cya! with lasting text/audio
+memories, explicit focus/history/connections and required EmbeddingGemma 2 local
+text/audio semantic retrieval. This supersedes the earlier Later/Pro sequencing for
+semantic memory in sections 6.4–6.7/10 for the extension release. No cloud service,
+surveillance or autonomous action is authorized. The original promise loop and its
+native-thin capture/shared-store/event invariants remain binding. The canonical
+extension is `docs/Cya_Product_Direction_PRD.md`; the original revamp proposal and
+audit remain historical evidence. Model absence is a failure fallback, not completion.
+New memories must not silently inherit promise alarms, progress or 30-day retirement;
+their exact schema/retention/link design is deferred to a concrete migration proposal.
+Existing rule-based promise enrichment is preserved pending a separate explicit
+provenance/suggestion-policy change. This unit may fix key-fetch failure handling and
+native-write visibility without a schema bump; risky schema/file-conversion/import
+changes require the user's explicit approval before execution. No new network
+permission or unverified model runtime dependency is authorized by this decision.
+
 Record any architectural or product decision that diverges from or refines this spec.
 ```
 [ADR-001] Title
@@ -971,6 +1277,62 @@ Rule: an overflow that appears only under `flutter test` is a font-metrics artef
 ```
 
 ### 13.4 Mistakes & lessons learned
+
+Iteration22: resolved-state presentation must suppress pending urgency without
+discarding the stored reminder needed by reopening. Persisted focus IDs must
+rehydrate their exact occurrence/revision after navigation or process recovery.
+An emulator driver needs a separate instrumentation target so taking a snapshot
+does not restart the app or its widget/export host. Record host QEMU crashes and
+resource starvation separately from app defects, and retain unpassed security,
+backup and semantic acceptance gates rather than inferring passes from unit tests.
+
+Iteration21: moving Garden out of primary tabs must preserve its emotional and
+visual role; a text-only link loses that. Reuse the actual painted scene with
+bounded event-derived content, not a fake decorative plant count. Profile
+visuals should show existing XP/badge evidence and keep settings reachable with
+large text. Lazy lists require real scrolling in navigation regressions.
+
+
+Iteration20 lesson: a feature is incomplete when its storage works but its main
+navigation entry is hidden. Tests must start from CyaApp and reach voice/text,
+playback, branch/topics/model, not only pump isolated feature widgets. Screens
+must remain scrollable at320px/enlarged text. Test reveals must target the vertical
+scroll view, not the editable SearchBar's horizontal scroll. Delayed Entrance
+callbacks now cancel on unmount. Public synthetic previews are visual evidence,
+not physical microphone or real-model quality certification.
+
+
+- 2026-10-16 Iteration19: a floating capture control can cover an otherwise
+  visible promise checkbox. Reserve navigation space and retain the original
+  interaction regression; do not merely change the test to tap around the bug.
+  Widget scroll finders must be hit-testable when animated/sliver children are
+  already built outside the viewport. Prefer bounded graphical state changes and
+  full-screen routine editing over long explanatory dialogs.
+
+- 2026-10-16 Iterations16–17: Reordering must swap canonical positions, not merely
+  decrement one row into an equal-position tie. Use an optimistic change version
+  and append before/after events transactionally. Review import needs a distinct
+  slot for historical copies; uniqueness by period/day alone fails when restoring
+  a backup into a nonempty destination. Test an existing local review explicitly.
+  Widget entry tests must pump the state update before tapping a newly enabled
+  button, and name the outer scrollable when an editable field adds its own.
+
+- 2026-10-15 Iteration11: Migration DDL and version stamping must commit together.
+  Native must read user_version after acquiring its transaction; swallowing ALTER
+  errors can certify an incomplete schema. CREATE IF NOT EXISTS alone cannot
+  validate a partially created table: verify columns before stamping. Test rollback
+  against an intentionally incompatible pre-existing table and compare actual
+  Kotlin DDL, not only a copied fixture. Compiler warnings require release follow-up
+  even when model debug inference succeeds. Snapshot PSS is not sampled peak RAM.
+
+- 2026-10-15: A native key-fetch exception is not evidence that encryption is
+  unsupported. Android must fail before opening a connection rather than silently
+  selecting plaintext. Native SQLite commits also bypass Drift stream tracking;
+  refresh shared queries and cached search on resume. Regression tests must use
+  external SQL, complete lifecycle transitions and drain delayed entrance timers.
+  Published model modalities do not prove that an exact Android artifact exposes
+  them, or that its compiler metadata works with the current app toolchain.
+
 ```
 [L-001] The shared database is only as portable as the weakest SQLite that opens it
 What broke / went wrong: The first on-device native capture failed with `no such module: fts5`, so
@@ -1103,6 +1465,49 @@ Rule: for this app, "verified" means an emulator walk-through, not a green suite
 ```
 
 ### 13.5 Test & verification log
+
+Iteration22: baseline289 Flutter tests; completed-status full291; focus recovery
+focused5; final full292/292 in11m03s, all passed. Final analyzer0 (321.2s on heavily loaded host); native
+JUnit8/8, zero failures/errors (7m53s). The final full-suite/build/install evidence
+and27-case emulator matrix are in `docs/qa/Emulator_QA_2026-10-23.md`. Synthetic
+AVD only; no new physical-device or semantic-quality claim from this QA pass.
+
+Iteration21 (2026-10-17): full289/289 Flutter tests54s; analyzer0 in7.8s; Home/
+Profile entrances/back, live plants/milestones and320px large light/dark reduced
+motion tested. Synthetic visual previews inspected. A526014 Home/Memories/voice
+entry/explicit mic off/close smoke passes after unlock. No physical recording
+or new model benchmark claimed.6015 installation evidence in BUILD_LOG.
+
+
+Iteration20 (2026-10-16):285/285 Flutter tests47s; new navigation covers explicit
+microphone start, model-independent audio persistence/event/job/playback, denied
+permission/settings fallback, interrupted-original recovery, Home post-commit
+index wake, immutable branch, topics and accepted graph/list access. Final14/14
+workflow rerun7s after permission-settings action; analyzer0/7.6s; native JUnit8/8,
+0 errors/failures42s. Light/dark synthetic visual previews2/2 plus exploration4/4
+in5s. Initial expected layout/lazy-row test failures were corrected; no hidden
+failure treated as acceptance. Exact release/permissions/installation below in
+BUILD_LOG and current implementation report.
+
+
+16 October2026, visual revamp: full274/274,82s/concurrency2; analyzer0/24.3s;
+normal release ARM64/x64 build414.9s (6012/8012), no Internet permission. Native
+schema8 archive/PCM JUnit8/8,0 errors/failures1m42s. A52 actual visual navigation,
+15-minute chosen focus, pause holding14:21 across leaving/reopening the room,
+resume and end/return verified; QA session ended, no inferred routine completion.
+Centered-plus correction: focused navigation/render14/14 in8s; full final source
+checks and next normal release recorded in BUILD_LOG. Rendered previews use
+synthetic in-memory data and loaded app/icon fonts, not private phone content or
+device performance proof.
+
+Iteration 10, 2026-10-15: Flutter 3.44.4/Dart 3.12.2, Windows, Android SDK
+`D:\Android`, JDK17. `flutter analyze --no-pub`: exit0, zero issues (8.8s).
+`flutter test --no-pub --reporter expanded`: exit0, 189/189 (21s).
+`flutter build apk --debug --no-pub`: exit0 (Gradle20.0s). Initial key-error and
+Home visibility regressions failed before fixes. Added cached-search coverage;
+test lifecycle/timer issues corrected. No new release/device/airplane-mode/model
+inference run. SDK artifact inspection is not performance or offline certification.
+
 | Date | What was tested | Result | Notes |
 |---|---|---|---|
 | 2026-07-08 | `flutter analyze` | ✅ 0 issues | Iteration 1. |

@@ -767,3 +767,489 @@ Format for each entry:
   one lived in the packaging of native libraries, the other in the size of a real screen. Green
   tests are evidence that the Dart logic is right, not that the app works. For anything with two
   runtimes in it, "done" means the engine-free path was watched running on a device.
+
+## 2026-10-15 - Restore development after moving the checkout to C:
+
+- Requirement / plan: restore the previous development environment without changing
+  app behavior or dependency versions; see `plans/drive-c-relocation.md`.
+- Root cause: the Flutter SDK at `D:\Flutter\flutter` was missing. User PATH,
+  VS Code's explicit SDK setting, IntelliJ's SDK library metadata, and project build
+  metadata retained its absolute path; build metadata also retained the old checkout.
+- Repairs:
+  - Restored Flutter 3.44.4 / Dart 3.12.2 at `C:\Flutter\flutter` from the official
+    Windows archive, verifying SHA-256
+    `8f2d6224fc6872d2f7f180de86cde989fcea3776efe0edf48a9aac2cd9be2b1b`.
+  - Updated persistent user PATH, VS Code settings, ignored IntelliJ SDK metadata,
+    and `android/local.properties`. Retained the valid Android SDK at `D:\Android`.
+  - Ran `flutter clean`, archived the relocated project-local Gradle cache under
+    ignored `.buildlog/gradle-before-drive-c`, and regenerated dependency metadata.
+  - User enabled Windows Developer Mode for Flutter plugin symlinks and reviewed
+    Android SDK licenses. `flutter doctor -v` now passes Android toolchain checks.
+  - Added relocation guidance to README and ignored the project-local Kotlin cache.
+- Verified:
+  - `flutter pub get --enforce-lockfile`: exit 0; `pubspec.lock` unchanged.
+  - `flutter analyze --no-pub`: zero issues.
+  - `flutter test --no-pub --reporter expanded`: 183/183 pass.
+  - `flutter build apk --debug --no-pub`: exit 0.
+  - Debug APK installed on the Android 14 emulator. Onboarding rendered; a native
+    share capture logged `capture_ok id=1`. The heavily loaded emulator initially
+    timed out waiting for the debug first frame; a subsequent screenshot confirmed
+    onboarding. These runs are functional checks, not capture-speed acceptance tests.
+  - Every package_config file URI exists. Active configuration uses the C: checkout
+    and SDK; hook stdout retains the invoking session's inherited PATH as log text.
+- `flutter build apk --release --split-per-abi --no-pub`: exit 0. ARMv7 22.8 MB,
+  ARM64 26.8 MB, x86_64 28.9 MB; ARM64 matches the previous recorded release size.
+- A second native share capture succeeded with `capture_ms=106`.
+- Installed the x86_64 release APK over debug without clearing app data. After a
+  force-stop, native capture logged `capture_ok id=3 capture_ms=239`, confirming
+  that the release native writer still opens the existing encrypted store after R8.
+  Release UI hierarchy confirmed the onboarding headline, Next button and step 1
+  of 4, with no AndroidRuntime/Flutter error logged. Launch timing was affected by
+  emulator load; this does not verify the PRD cold-start performance budget.
+- Limits / feedback: Visual Studio C++ tooling for Windows desktop is absent; this
+  does not block the Android app. iOS/macOS builds cannot be verified on Windows.
+  Automatic approval review rejected removal of the downloaded SDK ZIP as blocked
+  by policy, so `C:\Flutter\flutter_windows_3.44.4-stable.zip` remains (about 1.8 GB).
+  Restart existing terminals and VS Code to reload the persistent PATH.
+- No application source or native capture behavior was changed. Existing unrelated
+  untracked documents under `docs/revamp/` were left untouched.
+
+## 2026-10-15 - Revamp foundation preflight (Iteration 10)
+
+- User's phased implementation instruction authorizes bounded foundation work
+  following the completed product-direction audit. Recorded ADR-018 to resolve
+  the old Later/Pro model scope in favor of required offline text/audio semantic
+  memory, preserve promises/native capture, and retain explicit migration approval.
+- Plan: `plans/iteration-10-revamp-foundation-preflight.md`. Established canonical
+  `docs/Cya_Product_Direction_PRD.md` from the supplied revamp proposal; preserved
+  the proposal. No claim that new memory features are already implemented.
+- Delivered: Android key-fetch errors/null/malformed keys now fail before a
+  plaintext connection can be selected. Non-Android unsupported hosts retain
+  explicit missing-plugin/null fallback. Existing native key literal is compatible.
+- Delivered: app resume refreshes shared-table Drift streams and cached searches
+  so native captures become visible without restarting Flutter. No polling,
+  inference or native capture work added. Current reminder/relock behavior retained.
+- Application/test files: `lib/native/database_key_port.dart`,
+  `lib/data/db/cya_database.dart`, `lib/presentation/app/cya_app.dart`,
+  `test/native/database_key_port_test.dart`, `test/widget_test.dart`.
+- Documentation: canonical PRD, Master PRD logs/ADR/status, native contract
+  (key/visibility behavior and stale v1 creation wording corrected), this log,
+  iteration plan, proposed `plans/revamp-v3-memory-migration.md`, and
+  `docs/revamp/EmbeddingGemma2_Android_Compatibility.md`.
+- Verification: original key-error/Home regressions failed before fixes.
+  Expanded tests include missing/null/malformed keys and native-like SQL captures
+  in Home and cached search. Corrected test lifecycle sequencing and drained
+  delayed entrance animation before disposal. Final results:
+  - `flutter analyze --no-pub`: exit 0, zero issues, 8.8 seconds.
+  - `flutter test --no-pub --reporter expanded`: exit 0, 189/189, 21 seconds.
+  - `flutter build apk --debug --no-pub`: exit 0, Gradle 20.0 seconds.
+  - `git diff --check`: exit 0. Ignored logs under `.buildlog/revamp-preflight-*`.
+- Environment: Windows, Flutter 3.44.4/Dart 3.12.2 at C:\Flutter\flutter,
+  Android SDK D:\Android, Temurin JDK 17.0.17.10, existing emulator API34 x86_64.
+  No physical A52 connected; no phone performance measurement or new release run.
+- Model compatibility research inspected actual LiteRT-LM 0.18.0 AAR/API and
+  published POM graph. Runtime AAR 20,905,807 bytes, minSDK24, ARM64/x86_64,
+  no manifest permissions; WAV audio input. Java21 classfiles/Kotlin2.4 metadata
+  versus existing Java17/Kotlin2.3.20 are untested integration risks, not observed
+  compiler failure. Configured audio initializes eagerly; omission of vision is
+  supported. No weights downloaded, no inference/quality/thermal/RAM benchmark.
+- Offline/network: no application dependency/permission or network code added.
+  SDK graph inspection found no HTTP client; this is not runtime network proof.
+  Airplane-mode and release merged-manifest checks were not rerun in this unit.
+- Data impact: schema v2, all existing tables and native writer unchanged; no
+  conversion/migration/import/deletion executed. Proposed additive v3 design is
+  concrete for review and awaits the user's required explicit migration approval.
+- Phase 1 remains incomplete: typed/audio memories, history/focus, required
+  semantic indexing/search/related suggestions and versioned import/export remain.
+  Next: approve migration design; build isolated exact-runtime compatibility POC
+  and verify local artifact/license, then implement bounded foundation units.
+  EmbeddingGemma 2 remains required and must pass actual offline/device evaluation.
+
+## 2026-10-15 - Iteration11 typed memories and exact model proof
+
+- User explicitly directed implementation (“start implementing the phases, go
+  on”); proposed migration approved for staged execution. ADR-019 records the
+  concrete schema/preservation decisions. No further approval requested for
+  already-authorized foundation work.
+- Delivered Home→Memories, typed save without tags/reminders, literal keyword
+  search preserving Bangla vowel marks, immutable edit history, archive/restore,
+  confirmed hard delete, chosen priority and dismissible post-save return prompt.
+  No promise duplication, alarms, XP or retirement for neutral thoughts.
+- v3 adds memories/revisions/events/jobs in both runtimes. Mutation/event/job
+  atomicity, stale-edit protection, failure rollback, future-version refusal and
+  actual Kotlin DDL column/FK parity have tests. Native upgrades now acquire a
+  transaction before reading version and never swallow ALTER failures.
+- Export format2 carries all thought revisions/events and keeps PIN redaction;
+  existing erase includes new source-owned rows. Import/attachments are not
+  implemented yet. Metrics script accepts v1/v2 unchanged promise/event shapes.
+- Exact source files: new `lib/data/db/memory_tables.dart`,
+  `lib/data/repositories/drift_memory_repository.dart`,
+  `lib/domain/entities/memory.dart`, `lib/domain/repositories/memory_repository.dart`,
+  `lib/presentation/providers/memory_providers.dart`,
+  `lib/presentation/screens/memories/memories_screen.dart`; modified DB and generated
+  DB/DAO bindings, intention DAO erase, core DI/router/paths, Home/Profile,
+  privacy provider, DataExport, tool/metrics, native CyaDatabaseContract/CyaStore.
+  Tests: native_contract updated, new memory_repository, memories and memory_privacy.
+  Governing documents/iteration plans/contract/log updated in the same unit.
+- Tests: focused22/22; full `flutter test --no-pub --reporter expanded`203/203
+  (71s), then new privacy integration1/1 (4s). Analyzer zero issues (17.8s).
+  `flutter build apk --debug --no-pub`exit0 (338.7s under concurrent host load).
+  `--build-number=4002` rebuilt successfully (93.5s) after emulator rejected
+  version1 over installed4001. No app data cleared/uninstalled.
+- API34 emulator native-first migration/capture: id5/capture_ms1431 cold;
+  subsequent id6/capture_ms60. Debug MainActivity launch reported timeout under
+  load; no AndroidRuntime/Flutter error observed. A pre-upgrade run-as tar attempt
+  failed because installed release was not debuggable; no recovery-backup claim.
+  No physical personal-data rollout, new release app run or airplane-mode test.
+- Exact-model POC: isolated ignored Gradle diagnostic package, LiteRT-LM0.18.0,
+  AGP9.0.1/Kotlin2.3.20/JVM17, debug and R8 release builds succeeded in5m29s.
+  R8 metadata warnings remain and are being addressed in Iteration12. Missing
+  model correctly returned native NOT_FOUND; JNI ABI/API works on emulator.
+- Downloaded public pinned model to developer workspace only,484,622,336bytes;
+  SHA256e7a8a2204b91e0f96e92960e84a09a89212e1633dcb7575a9bf3378b4df77f4c
+  verified. ADB-installed into diagnostic storage. No model download code in app.
+  CPU2threads, vision omitted, float32: actual text and synthesized raw-WAV audio
+  return finite normalized256d vectors, no ASR/transcript. Single-run init16,899ms,
+  firsttext2325ms, nextquery790ms,1secondaudio3296ms; PSS snapshots33,079→250,607→
+  440,928KiB. These are emulator diagnostics, not sampled peak, phone performance
+  or multilingual/retrieval-quality evidence. Full report in revamp compatibility doc.
+- No application package/network permission/dependency added in Iteration11.
+  Public tooling/artifact downloads occurred on development host. Overall Phase1
+  remains incomplete: voice, semantic app integration/related suggestions, full
+  focus sessions, portable import, and hardware/quality acceptance still required.
+  Continuing under `plans/iteration-12-required-semantic-memory.md`.
+
+## 2026-10-15 — Iteration12 required semantic text integration
+
+- Delivered lazy local EmbeddingGemma2 bridge, explicit digest-checked local model installation, durable versioned segment jobs/retry/rebuild, semantic search and related suggestion accept/dismiss with exact historical revision links. No inference on native capture or app startup.
+- Exact SDK LiteRT-LM0.18.0; generic484,622,336-byte model pin/hash in compatibility report. CPU2threads, float32,256d, vision omitted. Runtime licenses bundled. No app network permission or downloader.
+- Fixed real minified JNI crash (InputData stripped) with package-scoped keep rules; R8 9.1.56 handles Kotlin2.4 metadata without changing Kotlin/AGP/JVM.
+- Schema4 additive vectors/links/job progress/event metadata, coordinated Kotlin/Drift, native-first and Dart-first migration fixtures. Existing promise tables preserved. Current voice work advances to schema5 separately.
+- Files: android/app/build.gradle.kts, android/build.gradle.kts, app/proguard-rules.pro, assets/licenses, MainActivity, memory/EmbeddingBridge.kt; lib/domain/services/embedding_runtime.dart, native/embedding_port.dart, data/services/semantic_index.dart, data/db/memory_tables.dart and generated bindings, repositories/drift_memory_repository.dart, core/utils/local_id.dart, memory providers/screens, router/paths and privacy export. New semantic_index and embedding_port tests; diagnostic tool entrypoints. Full change list remains git diff (earlier relocation changes preserved).
+- Tests: full213/213 (49s), later focused migration/port/WAV19/19. Analyzer0 (18.9s). Debug build199.6s. Production release splits236.1s: ARM64 49.1MB, x64 55.2MB, weights excluded. aapt release permissions contain no INTERNET/ACCESS_NETWORK_STATE.
+- Actual app bridge airplane-mode smoke: two text sources indexed21,273ms including cold initialization; text query606ms expected source first; raw tone audio256d, text/audio cosine0.74666; disabled-model capture/keyword passed. Synthetic functional evidence only.
+- Actual release multilingual seed:30 synthetic docs,30 queries per prefix. Official-card Hit@1 English10/10, Bangla10/10, Banglish6/10; Recall@5 .9667/.9333/.6333; warm query p50 459/442/445ms. Runtime-guide alternate prefixes same Hit@1, Banglish Recall@5 .6. Retain official prefixes; representative Banglish/speech corpus acceptance remains open.
+- API34 x86_64 emulator only; release native-first capture id8/capture_ms761 cold. No A52 connection, battery/thermal or phone performance proof. Restored original emulator radios after experiments. No personal phone data migrated.
+- Continuing voice in Iteration13. Required semantics are implemented for text, not declared complete: real speech retrieval, managed original audio, representative quality, device/scalability acceptance remain. No optionalization or model substitution.
+
+## 2026-10-16 — Iteration13 original voice memories
+
+- Delivered native foreground AudioRecord PCM16/16k mono (five-minute bound), explicit microphone permission, playback, background stop, interrupted .part recovery retaining original bytes. No SpeechRecognizer/ASR or model work on native promise capture.
+- Managed immutable WAV files, SHA256/size/duration metadata, schema5 attachments and durable deletion-cleanup queue in both Kotlin/Drift. Finalization/integrity precedes source/revision/event/job commit; recording retries are idempotent. Optional captions are separate immutable revisions;20-second raw-audio segments are indexed without transcripts.
+- Capture/review/recovery UI and model-disabled playback; app-private audio files are NOT encrypted, disclosed before recording/export. SQLCipher covers SQLite only. Backup/extraction exclusions follow no-cloud requirement (ADR022); OEM behavior not certified.
+- Format4 complete readable ZIP streams originals and manifest/hash; missing/corrupt files fail instead of silent omission. Full erase stops recorder/model, queues cleanup and removes owned files/export caches. Public model weights retained.
+- Files: native memory/VoiceBridge.kt, WavePcmFile.kt, privacy/ArchiveWriter.kt, DocumentShare/MainActivity, manifest/backup XML; Dart domain/audio, local_audio_files, attachment_cleanup, voice_port, audio_mapping, memory_tables/generated bindings, repository/index/providers, voice_capture_sheet, memories/Profile/privacy/DataExport/share bridge; contract/plans/ADR.
+- Full Flutter tests225/225 (30s). Native :app:testDebugUnitTest five tests,0 failures/errors,2m49s. Debug8007 build29.9s; diagnostic8008 build20.2s.
+- Actual airplane-mode app smoke: dumpsys active default network none; two text sources plus original synthetic tone WAV indexed17,072ms including cold initialization, text query426ms expected source first, direct text-query returns indexed raw-audio memory without transcript, original checksum unchanged and attachment deletion verified. Disabled-model capture/keyword pass. Log .buildlog/audio-semantic-airplane-smoke.log. Synthetic tone is NOT spoken multilingual quality evidence.
+- Emulator only; A52 absent. Physical mic/phone, representative speech quality, battery/thermal, low-storage UX and final release checks remain. Analyzer had two braces lints in developer smoke (no app compile errors); cleanup continues. Latest diagnostic must be replaced by normal app. Shell AIRPLANE_MODE broadcast denied by OS; settings/wifi/data toggles worked and no-network confirmed; restored toggles afterward.
+- Portable validated import continues in Iteration14. Overall Phase1 remains incomplete.
+
+## 2026-10-16 — Iteration14 portable import validation
+
+- Added local SAF selection, privately staged bounded ZIP/JSON reader, manifest SHA256 verification, strict attachment names, duplicate/path/unknown-entry rejection, actual decompressed size limits (10MiB manifest,9,600,044-byte audio,1GiB total) and streamed digest validation. No runtime network API or overwrite.
+- Dart validates supported version, counts, IDs, source/revision/event/link/audio references, capture history, enums and attachments. Preview counts, explicit append copies, fresh identities/remapped refs, fresh semantic jobs and manifest repeat guard. Current PIN/settings/priority unchanged. DB/source/history/jobs commit atomically, failed commit removes only newly allocated audio files. Original export/user data untouched.
+- Files: privacy/ArchiveReader.kt and ImportBridge.kt, MainActivity channel, native/import_port.dart, data/services/backup_import.dart, Profile import screen/entry, ArchiveReaderTest, backup_import_test and audio round-trip test.
+- Host focused import/audio8/8 (3s), including integrity-preserving audio copies, failed import cleanup, original untouched, bad counts/references/version/duplicate revision rejection and transactional rollback. Native tests8/8,0 failures/errors, :app:testDebugUnitTest BUILD SUCCESSFUL2m53s. Analyzer0 issues58.2s before focus-session changes.
+- Picker interaction/real device archive restore remains to validate; no claim from merely opening a chooser. Import file-selection cancellation/recovery does not alter existing rows. Staging uses private cache; crash leftovers are not uploaded. Full erase clears cache.
+- Continuing full focus-session history as Iteration15/schema6/format5. Phase1 remains open pending representative semantic quality/device and final regression/recovery acceptance.
+
+## 2026-10-16 — Iteration15 focus history and foundation validation
+
+- Schema6 coordinated additive focus_sessions/focus_events in native and Drift. Session switch/end and append-only start/end events update atomically with current-priority preference projection. Legacy preference preserved as legacy_observed (migration observation time, unknown original start never invented). User can browse focus history; saving thoughts still commits before a dismissible return prompt.
+- Format5 carries focus sessions/events with promises/audio/memories/links; importer accepts1–5, remaps histories and explicitly ends imported active session copies with import_ended. Current focus/settings/PIN preserved. Full erase includes sessions/events. No tracking/alarms/blocking introduced.
+- Files: memory_tables and generated DB, cya_database/native contract, focus_repository, memory providers/screen, privacy/DataExport/backup_import/import UI, intention DAO erase, metrics format support, new focus_repository tests and updated contract/privacy tests.
+- Full Flutter236/236 (71s), focused foundation32/32 (12s), then current legacy-focus/portable-audio/import/UI subset18/18 (8s). Analyzer0 issues38.4s before final legacy SQL. v4/v5 first-open fixtures preserve source bodies, model version/progress and legacy chosen priority, with foreign_key_check clean. Failure-injected focus event rolls back session/preference changes.
+- ARM64/x64 release build in progress. A52 connected and authorized: SM-A525F/API34/arm64, MemTotal7668936KiB, MemAvailable3355912KiB at initial sample; USB powered,48% battery,30.9C battery sensor. Package check found no existing Cya! install; no user DB overwritten. Isolated minified probe installed and exact public model explicitly copied to Download (484622336bytes,18.890s transfer). Runtime/device results pending; do not infer success from transfer.
+- Required semantic quality/phone/thermal and product UI/recovery gates remain open. Explicit connections/branches planned in Iteration16 after foundation functional gate; no semantic capability removed.
+
+## 2026-10-16 — A52 production foundation functional gate
+
+- Production release ARM64/x64 builds in433.5s (49.3/55.4MB). Manifest no INTERNET/ACCESS_NETWORK_STATE; existing alarms/notifications/boot/biometric plus explicit microphone only. Normal lib/main.dart installed on A52, not a diagnostic entrypoint. No app data cleared/uninstalled.
+- Exact model imported through isolated probe SAF with digest verified. A52 SM-A525F Android14/API34 arm64, CPU2threads/float32/no vision: init2855ms, first text429ms, warm query337ms,1second synthetic WAV637ms; finite256d, norm1.00000040, text/audio cosine0.73458576, post-audio PSS550071KiB. Initial20,091KiB and post-init353,961KiB. Separate ADB sampling began after engine close (~169MiB), so it did NOT capture inference peak. Do not report it as peak-RAM proof.
+- Battery snapshots USB charging49%,30.9C before installs,32.4C after short probe/setup. Charging/install confounded, no energy/thermal acceptance claim. Logs .buildlog/a52-initial-probe.log and a52-initial-memory.json.
+- A52 production SAF import previewed/validated then restored synthetic ZIP (promise, original WAV, revision/event history, focus history). Success UI confirmed; no overwrite. Exact model installed through actual app local-file UI; status Semantic memory is ready. Production PSS673766KiB/RSS730516KiB after indexing. Text query 'a high pitched whistling tone' returned Voice thought with Audio match near0s, no transcript/caption. Proves integration, not spoken quality.
+- Found import route nested under shell caused capture FAB overlap. Corrected Profile navigation to rootNavigator; next build carries fix. No global erasure on phone. Home/profile settings existed by UI check; absent pm path at initial check was not proof of absent historical/restorable data. Preserve current phone rows/settings and do not claim a personal-data backup/restore verification.
+- Removed15 incidental formatter-only changes after exact comparison: formatting HEAD reproduced their entire current content, initial protected hashes checked. Kept all behavior changes. Emulator InterlinkQA shut down gracefully to relieve16GB host RAM pressure; persistent data retained, will restart for recording QA (host input explicitly off). Phone recording not automatically activated.
+- Phase1 functional gate now passes for staged Phase2 implementation (plan16 records evidence). Representative multilingual/speech retrieval, sustained A52 measurements, process/recording/storage/reboot and final release acceptance remain required Phase3/4 work. Semantic memory remains mandatory; no budget/model downgrade.
+
+## 2026-10-16 — user adds required routine/productivity scope
+
+- Read both supplied attachments fully: updated50,234-byte v2 PRD and10,186-byte execution prompt. Preserved unchanged texts as docs/revamp/Cya_Product_Direction_PRD_v2_Routines_2026-10-16.md and Cya_Execution_Prompt_v2_Routines_2026-10-16.md. Canonical PRD receives an approved additive delta; original master/proposal visions not silently replaced.
+- New required Phase1: real routines (weekdays/window/steps, pause/reorder/Today selection and explicit occurrence outcomes/recovery), optional factual daily/weekly review. Current focus sessions are NOT routines. Delta audit maps v2 FR10–12/22 and missing coverage. ADR024 resolves the proposal's stale audit-only starter against already-approved audit and user's continue/execute instructions; no repeated approval request.
+- Finish in-progress schema7 connections to a tested contract, then implement routines in a separate additive schema8 unit per iteration17 plan. Do not undo previous authorized memory/semantic work. All no-network/native-thin/source/history invariants remain.
+- A52 offline production check: first sample was taken before network settled (active network114), so inconclusive. Repeated with airplane enabled, WiFi/data disabled and wait for disconnect: Active default network:none, raw-audio text-query result visible; original airplane0/WiFi1/mobile1/Bluetooth1 restored and verified. Report .buildlog/a52-production-offline-settled.json. No physical microphone activation.
+
+## 2026-10-16 — Iterations16–17 connections, routines and retained review copies
+
+- Delivered explicit related/supports/contradicts/supersedes links, immutable branches with source selections, bidirectional version navigation, topic/project hierarchy and existing-promise assignments. Schema7 native/Drift parity, no second reminder/task engine. Nine connection tests cover atomicity, provenance, unchanged source, cycles, refs and remapped portable history.
+- Schema8 adds routines, immutable routine_revisions/events, explicit routine_occurrences with optimistic change_version, before/after occurrence events and local_reviews associated with the existing Memory history/index. Weekday masks, preferred same-day windows, optional steps/fallback, reorder, pause/resume, reversible removal and manual complete/skip/defer/replan. No automatic Today workload/failure, inferred work or new alarm.
+- Optional daily/weekly review uses actual recorded actions; note versions/jobs reuse Memory. Evidence-based suggestions require manual action. Import copies preserve current review with distinct import:UUID origin slots; a regression restores into a destination that already has a local review. No silent overwrite or dropped imported prose.
+- Format7 includes routine/review history, validation/remapping of complete occurrence snapshot chains, and sorted original event IDs. Full erase removes owned tables. Local storage/status screen reports actual counts/sizes and discloses readable original audio/archives. Import preview reports routine/review counts and dated copies. Format8 later adds timer event vocabulary.
+- Files: lib/domain/entities/routine.dart; data/db/routine_tables.dart and generated DB; repositories/routine_repository.dart, memory_connections.dart; services/routine_backup.dart, backup_import.dart; routine/memory providers; screens/routines/*, memories/{collections_screen,connection_picker,memories_screen}.dart; Profile import/storage screens; privacy/export/erase paths; native CyaDatabaseContract.kt; contract/docs/plans and repository/widget tests.
+- Exact baseline: full Flutter260/260 in34s; analyzer0 in35.0s; Gradle :app:testDebugUnitTest8/8, zero errors/failures,1m42s. Native archive/PCM tests plus host coordinated migration fixtures. Release223.9s: ARM64 52,326,861bytes (49.9MB), x64 58,696,355bytes (56.0MB), version6011/8011. Release no INTERNET/ACCESS_NETWORK_STATE. Logs schema8-* under .buildlog.
+- A52 upgraded in place schema6→8, normal entrypoint, no clear/uninstall. After the user unlocked existing app security, actual UI created QA evening reset without selecting Today automatically, then selected/completed it. Settled airplane-mode Active default network:none; explicit completion and factual daily review verified. All radios restored. Automated review-note save visibility assertion was inconclusive; do not report it as successful phone save proof.
+- User then rejected the verbose UI and explicitly requested its own tab, cohesive visual/animated life planning and proper focus mode. Iteration19 replaces presentation while retaining these domain/event rules.
+
+## 2026-10-16 — Iteration18 real A52 raw-speech retrieval evidence
+
+- Isolated minified probe, pinned real EmbeddingGemma2/LiteRT-LM0.18.0, CPU2threads/float32/256d/no vision.20 public Google FLEURS clips (10English,10Bangla),204.86s total;60 positive queries (native references,20 Banglish text paraphrases and20 cross-language paraphrases) plus3 unrelated controls. Audio embeddings consume WAV only, without transcripts/captions. Text labels are evaluation/reference input separately.
+- All60 positives ranked expected audio first among20 candidates; text-to-text same, audio→reference-text20/20. Not graded relatedness truth or spontaneous Banglish-speech acceptance. The earlier Banglish seed6/10 remains a counterexample; no broad perfect-quality claim.
+- Engine init1424ms with OS caches warm; audio p502653ms/p955649ms for4.14–18.96s clips; warm query p50342ms/p95377ms; corpus97,561ms.27 independent RAM samples max541,311KiB (528.6MiB), in-process observed540,903KiB. Sampled maxima, not absolute peaks.
+- Thermal status0 across readings, battery sensor32.5–33.2°C. USB charging16% throughout;100s cannot certify sustained heat or unplugged energy. No INTERNET; settled Active default network:none. Original0/1/1/1 radios restored and verified. A first launcher PID-read raced startup; added bounded wait and repeated successfully, no false failure claim.
+- Source/pin/license/method/results/limits: docs/revamp/A52_Semantic_Benchmark_2026-10-16.md. Reproducible host fixture/probe/query files under tool/benchmarks. Personal data was not read/transmitted; no phone microphone activated.
+- Remaining gates: held-out300-query/1000-source quality, spontaneous/noisy Banglish audio, independent relatedness,10k/50k responsiveness, sustained unplugged energy/thermal, physical recording/interruption/low-storage/reboot checks. Offline ASR is separate P1 feasibility; image/video staged in the same shared-space plan. Required semantic memory remains integrated, never optionalized.
+
+## 2026-10-16 — Iteration19 visual Rhythm and durable focus room
+
+- Explicit creator-approved presentation overhaul: five preserved-state Home/Promises/Rhythm/Garden/Profile branches; graphical day path from actual selections, seven-day picker, compact routine timeline cards, focus invitation, separate routine library/full-screen editor, recovery/history menus, optional graphical review with weekly bars and outcome legend. Reuses sage/mint, Plus Jakarta Sans and existing entrance/motion/haptic conventions; reduced motion renders still states.
+- Focus room supports an independently chosen priority or selected routine,15/25/45-minute clock, persisted deadline, pause/resume/end and original steps. Existing focus_sessions/events plus preference projection, no DB migration/task engine/alarm. Expiry does not complete or end work. Stale rooms cannot end a changed priority. All state/event writes transactional, failure injection tested. Capture extracts/reuses the existing composer and save-before-return reminder; text stays exact and original audio capture remains unchanged.
+- Format8 adds timer_started/paused/resumed/stopped; exports history but excludes running device-clock projection. Imports end copied focus histories, retain current priority and never activate imported clocks. Native schema remains8. Native capture/inference boundaries and network permissions unchanged.
+- An end-floating capture trial covered a promise checkbox; the original regression caught it. Capture now occupies reserved48px navigation space. Five tabs remain accessible; no overlay over completion controls. Narrow light/dark enlarged1.35 text, reduced motion and focus save-first UI tests pass.
+- Current exact final checks: flutter test --no-pub --concurrency=2 --reporter expanded274/274 in82s; flutter analyze --no-pub0 issues24.3s; latest focused focus/navigation16/16 in12s. Earlier full run272pass/1fail exposed the overlay and was corrected, not hidden by modifying the promise test.
+- New core files: domain/entities/focus_timer.dart; data/repositories/focus_timer_repository.dart; screens/routines/{focus_room_screen,rhythm_visuals,rhythm_week_chart}.dart and redesigned day_plan_screen/routine_editor/routines_screen/review_screen; memories/memory_composer.dart extracted from existing screen; routine providers, router/paths and shell/nav; focus timer/domain/UI/navigation tests; format/export/import/metrics updates. Full final file inventory/limits in the implementation status report.
+- Normal production ARM64/x64 build4012 in progress. Device visual/timer checks follow installation; no claim yet that the new visual release has passed physical-screen inspection or sustained60fps profiling.
+
+- Build completed:414.9s, ARM64 52,327,609bytes/version6012; x64 58,762,639bytes/version8012. Both normal lib/main.dart. Release permissions unchanged, no INTERNET/ACCESS_NETWORK_STATE. A52 in-place install6012 succeeded; app security reactivated after update, so final UI checks wait for the user's unlock. No Cya! clear/uninstall. Separate dev.cya.embeddingprobe removed after evidence capture, freeing its public test model copy; Cya!'s installed model remains untouched.
+- git diff --check exit0. Detailed behavior/files/migration/privacy/test/remaining acceptance report: docs/revamp/Revamp_Implementation_Status.md. Model results in A52_Semantic_Benchmark_2026-10-16.md. Independent low-storage/mic interruption/reboot, sustained performance and larger held-out quality still unpassed; no all-phases-complete claim.
+
+## 2026-10-16 — creator correction: + centered and hovering
+
+- Explicit latest direction rejects reserved end-nav +. Restored existing64px capture control to centerFloat above all five tabs. Kept original promise capture/toggle behavior and bottom list clearance. Position test checks horizontal center and vertical separation from tabs. Profile achievements test now scrolls its lower row to a hit-testable position above the creator-requested floating control; no hidden nav item or unreachable last row. ADR-027 records the decision overriding earlier placement.
+- Corrected completed path-marker contrast to theme onPrimary with a vector check; shared font for numbered markers. No task/native capture/model/schema/dependency changes. Native schema8 and export8 unchanged.
+- A52 actual6012 visual/focus checks after user unlock: five tabs/day/week visible, QA selected/completed occurrence present;15-minute independent chosen priority started; paused at14:21, room left/reopened with same value, resumed and explicitly ended/returned. QA focus ended, current priority initially empty and restored empty. No model/mic activation or data clear. Flags in .buildlog/a52-visual-focus-smoke.json.6012 does not carry the final centered +; corrected package follows.
+- Developer-only tool/rhythm_visual_preview_test.dart renders light/dark with synthetic in-memory routines and loaded PlusJakartaSans/MaterialIcons. First render lacked icon fonts, corrected tooling; final previews inspected with real icons and vector marker. These are not phone screenshots or FPS measurements. Focused main navigation+render14/14 in8s. Final full/analyzer/release follow below.
+
+
+## 2026-10-16 ? latest creator correction: compact corner +
+
+Latest instruction supersedes the centered hovering decision (ADR-028). Capture
+is now a 48px rounded square at bottom-right, solid theme primary/onPrimary,
+16px edge inset, softer shadow and smaller28px icon. All five tabs retained.
+Press feedback respects reduced motion. Original capture flow unchanged.
+Short-viewport test initially reproduced a floating overlap with the promise
+checkbox; regression now verifies that scrolling reaches the original control
+and completion persists, alongside Profile-row reachability. This is a normal
+floating overlay, not a promise-state change. Light/dark synthetic renders inspected.
+Final checks/package recorded in the implementation status report. No schema,
+model, permissions, dependency or native capture changes.
+
+
+Final corner package: `flutter build apk --release --no-pub --split-per-abi
+--target-platform android-arm64,android-x64 --build-number 4013 -t lib/main.dart`
+passed in116.0s. Normal entrypoint; ARM64 version6013,52,393,145bytes;
+x64 version8013,58,762,639bytes. Release manifest has no INTERNET or
+ACCESS_NETWORK_STATE permission. Current artifact SHA256:
+
+- ARM64: `91e6ebf9e9f22037e6335b0d5c393458df231676e6631864154c86b946188f91`
+- x64: `2669850361eb0ac104be567d06db865a70a4dffa6aa2dd32b98f302c095c91a4`
+
+Full274 tests passed71s; analyzer0 issues18.1s; synthetic light/dark preview2/2
+passed5s; diff-check0. Earlier centered4013 build was never installed and is now
+replaced by the corner artifacts. No app clear/uninstall. Final position checked
+in rendered synthetic layouts; no new physical unlock/GUI proof is claimed.
+
+A52 in-place install succeeded (`adb install -r --no-streaming`); package manager
+confirms version6013. Existing app data retained; no clear/uninstall performed.
+
+
+## 2026-10-16 - Iteration20: visible memory and voice journaling
+
+- User reports a genuine product gap: implemented voice capture is hidden behind
+  a small Home link and unlabeled toolbar action; global + only captures promises.
+  ADR-029 makes Memories a preserved main tab. Five tabs: Home, Memories, Rhythm,
+  Promises, Profile. Garden remains via Home/Profile and week landscape with back.
+- Home/Memories expose labeled Record voice and Write a thought. Corner + opens
+  voice/text/promise chooser. Focus also exposes voice capture. No mic starts on
+  navigation. Native share/tile/widget unchanged. Thought editor is full screen,
+  preserves exact text/earlier versions and confirms unsaved draft discard.
+- Recorder shows actual elapsed time/max5min, explicit stop/save/review, original
+  playback, kept-original recovery and discard confirmation. Permission failure
+  offers existing Android app-settings handoff and a usable typed fallback.
+  Voice journal cards show actual stored duration/dates, play/stop and version,
+  connections/branch/actions. Keyword/Semantic and All/Voice/Written filters.
+- Accepted immediate-link map is bounded to6 nodes, with full navigable list and
+  explicit provenance retained; suggestions stay separate/reviewable. Topics,
+  model/install/status, import/count preview and storage views match the palette.
+  Theme defines all surface-container roles; final visual review removes the
+  heavy default search elevation. No fake sound levels, tracked work or analytics.
+- Home/Focus/global capture previously queued without starting the worker until
+  Memories opened. Post-commit notice now resumes lazy index; worker lifecycle
+  observer pauses/unloads on background and resumes on return independently of
+  current tab. Capture remains source/event/job first. No model on opening
+  capture UI; test embedding verifies source/event already committed.
+- Fix delayed Entrance timer cleanup on dispose. Initial UI tests exposed lazy
+  offscreen row expectations and horizontal search-scroll selection; tests now
+  actually scroll vertical content and reach controls, without hiding failures.
+- Tests: full285/285 in47s; final voice/memory/exploration+render16/16 in9s after
+  last visual correction; analyzer0 in7.6s; native JUnit8/8,0 errors/failures42s.
+  Full suite uses --no-pub --concurrency=2 --reporter expanded; all Flutter commands
+  use --no-version-check to avoid a stalled SDK version probe. A concurrent preview
+  attempt hit Windows sqlite3mc.dll test-file locking and was rerun after suite
+  completion. No dependencies changed. Initial failed checks are not final passes.
+- Visual proof: tool/journal_visual_preview_test.dart renders synthetic Home,
+  memory library/cards and recorder light/dark with bundled fonts/icons. Not
+  phone screenshots or physical mic/performance evidence. Screenshot artifacts
+  .buildlog/journal-{home,library,entries,recorder}-{light,dark}.png.
+- No schema or portable format change (8/8), no new dependency/permission/network
+  call or native inference/capture change. Existing personal-phone data untouched.
+  ADB currently has no devices; final installation requires reconnection.
+- Remaining gates and exact feature paths: docs/revamp/Navigation_and_Release_Checklist.md.
+  Required semantic memory remains integrated. Larger judged multilingual/Banglish,
+  relatedness, sustained energy/thermal/large-index and physical mic/interruption/
+  storage/reboot validation remain unpassed. Staged offline ASR/image-video not
+  presented as implemented. Existing promise reminders remain; this unit adds no
+  routine-window/focus-end alarms. Do not claim all phases accepted.
+
+
+### Iteration20 final release artifacts
+
+Normal `lib/main.dart` entrypoint, build4014: `flutter --no-version-check build apk
+--release --no-pub --split-per-abi --target-platform android-arm64,android-x64
+--build-number 4014 -t lib/main.dart` passed in65.6s after final search styling.
+Earlier first packaging passed134.7s and is superseded by this exact rebuild.
+ARM64 version6014 and x64 version8014. Manifest inspection confirms no INTERNET
+or ACCESS_NETWORK_STATE; existing microphone/notification permissions retained.
+
+| Artifact | Bytes | SHA256 |
+|---|---:|---|
+| build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | 52459809 | bdc5218407fa8f4b96bb98b61772d45caa28023c4d66baef45028600c8885daf |
+| build/app/outputs/flutter-apk/app-x86_64-release.apk | 58894839 | c0072308e258a2d2af732f6c1d26cb2d05df741a6dd8aca048073a8e3acd5b73 |
+
+ADB lists no connected device at final check. **This release is built but not
+installed on the A52**; the previously installed release is6013. No phone data
+was cleared, replaced or uninstalled. Physical checks of this exact UI and
+intentional microphone recording still require the reconnected authorized phone.
+No updated real-device latency/RAM/thermal result is claimed for this build.
+
+
+## 2026-10-17 - A52 release6014 installed after reconnection
+
+- Authorized Galaxy A52 R58RA47Q09L/SM-A525F reconnected. Verified ARM64 APK against
+  SHA256 bdc5218407fa8f4b96bb98b61772d45caa28023c4d66baef45028600c8885daf.
+- `adb -s R58RA47Q09L install -r --no-streaming ...` succeeded; package manager
+  confirms versionCode6014/minSDK24/targetSDK36. Existing data retained; no
+  uninstall/clear, no migration, no app source changes or rebuild this unit.
+- MainActivity launches and is resumed. Android device keyguard is not showing,
+  but Samsung's biometric package displays Cya!'s existing unlock prompt. Initial
+  UI smoke cannot inspect the app beneath that prompt. User asked to unlock;
+  no PIN/biometric bypass or credential collection. No microphone was activated.
+- UI entry/recorder checks await unlock, not reported as failed functionality or
+  passed checks. Evidence .buildlog/a52-release6014-navigation.json. Prior host
+  tests/build/permission verification remain applicable to this exact APK.
+
+
+## 2026-10-17 - Iteration21 Garden doorway and visual Profile
+
+- Explicit creator request: keep Garden visually present on Home and accessible
+  from Profile, with more Profile visualization. Shared GardenDoorway replaces
+  the Home text shortcut near the top and the Profile plain row. Reuses the
+  actual GardenSceneView, event-derived plants/counts, current-time sky and full
+  Garden route/back. Miniature painting capped16, one-shot growth, no wind loop.
+  Existing Home week landscape/statistics remains available.
+- ProfileIdentityVisual adds an animated XP/avatar ring and current level, using
+  original projections. ProfileMilestones shows earned/total and three actual
+  badge progress circles; opens full achievements. Existing settings, review,
+  memory/model, lock and data controls retained below. Dark-mode switch uses
+  the theme's inactive colors. No schema/data/dependency/native/network changes.
+- New tests prove both Home/Profile Garden entrances and back paths, reactive
+  event-backed plants/milestones, 320px enlarged light/dark reduced-motion layouts
+  and settings reachability. Old short-screen expectations were updated to scroll
+  to now-lower promise counts; initial failures were lazy layout expectations,
+  not suppressed tests. Full289/289 in54s; analyzer0 in7.8s; focused navigation+
+  new Profile tests+render18/18 in10s before final minor switch styling. Native
+  source unchanged; prior8 native tests not rerun for this presentation-only unit.
+- Synthetic previews expanded with real fixture resolution events, Home garden,
+  Profile header and milestone views. No private phone screenshots or fake saved
+  growth in production. tool/journal_visual_preview_test.dart.
+- A52 release6014 physical navigation smoke now passed after user unlock: Home
+  voice/text actions, Memories tab/header, visible recorder, explicit Start/off
+  copy, close without starting mic, return Home. Prior pending unlock resolved.
+  New release4015/ARM646015 packaging/install results follow separately.
+- Files: lib/presentation/widgets/garden_doorway.dart;
+  screens/profile/profile_visuals.dart and profile_screen.dart;
+  screens/home/home_screen.dart; test/widget_test.dart;
+  test/presentation/garden_profile_test.dart; tool/journal_visual_preview_test.dart;
+  Master ADR-030/living log, iteration21 plan, BUILD_LOG, navigation checklist and
+  implementation status. No changes to native capture, semantic runtime or DB.
+
+
+Iteration21 final package: normal lib/main.dart release build4015 passed116.1s;
+ARM64 version6015/x64 version8015. Final synthetic preview2/2 passed6s after
+switch styling; full289/28954s and analyzer0/7.8s apply to final source. Manifest
+has no INTERNET/ACCESS_NETWORK_STATE permission; existing permissions unchanged.
+
+- `build\app\outputs\flutter-apk\app-arm64-v8a-release.apk`: 52459937bytes, SHA256 `380de6be315015648afdf68f0096af292a29b81f4357ecddd5f91df8fc663875`.
+
+- `build\app\outputs\flutter-apk\app-x86_64-release.apk`: 58894967bytes, SHA256 `66c1b46f0081dc5f1bf96022058439fed6f434f7e87d8d9948e36837617d3552`.
+
+No data migration, model/runtime or new native code. Exact installed/device status follows.
+
+
+17 October2026 installation closure: A52 in-place `adb install -r --no-streaming`
+succeeded, package manager confirms6015. No Cya! clear/uninstall. Initial device
+UI probe encountered a transient ADB CalledProcessError; reconnection transport
+refreshed and MainActivity launch confirmed. Retried probe is blocked by the
+existing app/device lock surface. No credential bypass, mic activation or data
+mutation. Final Garden/Profile physical GUI is unverified pending normal unlock;
+host navigation/back/data/reduced-motion/render coverage is green. Prior6014
+voice/navigation physical smoke remains valid for those unchanged entry flows.
+Evidence .buildlog/a52-release6015-garden-profile.json. Exact final files changed
+in this unit: garden_doorway.dart; profile_visuals.dart; home_screen.dart;
+profile_screen.dart; widget_test.dart; garden_profile_test.dart; expanded
+journal_visual_preview_test.dart; iteration21 plan; BUILD_LOG; Master PRD ADR-030,
+module/session/lesson/test logs; navigation checklist; implementation status.
+
+
+## 2026-10-23 ? Iteration22: comprehensive emulator QA and regression fixes
+
+- Synthetic API34 CyaQA_20261023/emulator-5560 only; no physical phone targeted,
+  personal data cleared, schema/dependency change or new network permission.
+- 27 distinct normal-release UI cases passed: original voice capture/playback and
+  interrupted recording recovery; multilingual text/keyword search; immutable
+  history/branch; routines/focus/review; Garden navigation; actual native share,
+  PROCESS_TEXT, RemoteViews PendingIntent, system tile and scheduled notification
+  delivery/Done. Full matrix, incomplete cases and synthetic evidence are in
+  docs/qa/Emulator_QA_2026-10-23.md; raw evidence remains ignored under .buildlog.
+- Fixed completed promise false overdue presentation (list and detail, two
+  red-to-green regressions) and lost saved routine occurrence when reopening
+  focus (one red-to-green regression, focused5/5). Original reminder/history and
+  explicit routine completion semantics preserved; no DB migration.
+- Final flutter --no-version-check analyze --no-pub: no issues,321.2s. Final
+  flutter --no-version-check test --no-pub --concurrency=1:292/292,11m03s.
+  Native offline testDebugUnitTest with one worker/2GB heap:8/8,zero failures or
+  errors,7m53s. Python QA scripts compile. Long durations reflect severe shared
+  host RAM pressure; they are not app performance measurements.
+- Software-rendering QEMU access violations and later accessibility/graphics
+  instability retained as environment failures, not mislabeled app/PIN defects.
+  Creator chose to leave a competing build running; it was not stopped.
+- At least6?7 meaningful commits and push explicitly authorized. GitHub account,
+  local author and committer verified as Adi-Sin101; no coauthor trailer. Six
+  completed units separate direction/contracts, implementation, native fixtures,
+  urgency fix, guarded UI workflows and QA report/evidence. Final delivery and
+  fresh release results follow; do not infer a push or install from this entry.
+- Remaining gates include actual PIN GUI/backup round trip, pinned-model
+  production UI retrieval/index lifecycle, physical microphone/biometric/OEM
+  delivery and named-device thermal/battery/held-out multilingual quality.
+  Semantic memory is required. Focus/routine end alerts and offline ASR are not
+  certified as delivered by this pass. See the report for precise limitations.
+
+
+### Iteration22 closure ? 24 October2026
+
+- Normal lib/main.dart release4016 passed753.7s. ARM646016:52459937 bytes,
+  SHA25609e6a62d04b09714024344d1bdb99097edcaae7168d92571947bc8ae2960768f.
+  X648016:58894967 bytes,
+  SHA256ec7ed330ca779bde33cc4425daf684553f1ea361e28c36a6b476770714c4720c.
+  aapt confirms minSDK24/targetSDK36 and no INTERNET/ACCESS_NETWORK_STATE on both.
+- Final fresh AVD eventually booted, but Android System UI ANR and package-manager/
+  accessibility stalls prevented verified update installation and further UI
+  acceptance. Last observed installed8015, no8016 success result. Stopped only
+  dedicated CyaQA_20261023; host resource failures remain distinct from app bugs.
+- 27 passing earlier emulator cases and final292 Flutter/native8/analyzer0 are
+  bounded results. PIN, real export/import, production model/retrieval, reboot
+  and additional edge cases remain open, listed in the QA report. No all-phases
+  or every-feature-perfect claim. Required semantic acceptance remains required.
+- Final delivery groups the authorized work into seven meaningful conventional
+  commits, author/committer Adi-Sin101, no coauthor. No APKs, model binaries,
+  exports, credentials or personal-phone data in Git. Verify ordinary push and
+  remote SHA before reporting completion to the creator.

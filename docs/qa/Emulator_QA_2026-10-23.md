@@ -50,6 +50,7 @@ recorded in the final validation section rather than attributed to this binary.
 | `flutter test test/presentation/promise_tile_status_test.dart` | PASS, two red-to-green regressions |
 | `flutter test test/presentation/focus_room_test.dart` | PASS, five tests including new recovery regression, eight seconds |
 | Final `flutter --no-version-check analyze --no-pub` | PASS, no issues, 321.2 seconds on the loaded host |
+| Final `flutter --no-version-check test --no-pub --concurrency=1` | PASS, all 292 tests, 11 minutes 3 seconds on the loaded host, after both fixes |
 | `gradlew.bat --offline --max-workers=1 "-Dorg.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=768m -XX:ReservedCodeCacheSize=256m" testDebugUnitTest` | PASS, 7 minutes 53 seconds; eight tests, zero failures/errors |
 | Native XML suites | WavePcmFileTest: 3; ArchiveReaderTest: 3; ArchiveWriterTest: 2 |
 | `python -m py_compile tool/qa/build_fixture.py tool/qa/emulator_qa.py tool/qa/run_emulator_cases.py` | PASS |
@@ -57,7 +58,8 @@ recorded in the final validation section rather than attributed to this binary.
 Logs are retained locally in ignored `.buildlog/qa22-*.log`; native XML is under
 `build/app/test-results/testDebugUnitTest`. A repeated full-suite attempt was
 interrupted deliberately during host memory pressure and is not counted as a
-test failure or a pass. The final full-suite result follows below.
+test failure or a pass. The later final full suite passed as recorded above;
+its long host runtime is not an application latency measurement.
 
 ## Actual emulator coverage
 
@@ -68,6 +70,9 @@ all combinations or error conditions of that feature were exhaustively covered.
 
 Selected synthetic screenshots: [saved original voice playback](evidence/voice-original-playback.png)
 and [explicit routine completion](evidence/routine-explicit-completion.png).
+The [latest recorded outcomes and attempt counts](evidence/case-results.json)
+preserve 27 passes and three failed/incomplete case IDs; two IDs refer to the
+same unfinished PIN workflow. Not-run cases have no fabricated log entry.
 
 | Case | Result | Observed behavior |
 | --- | --- | --- |
@@ -181,8 +186,8 @@ Failures are preserved in raw evidence rather than silently erased.
 
 ## Remaining release gates
 
-1. Finish final full suite, rebuild the normal release with the QA fixes, record
-   exact hash/version and verify the fixes on that installed binary.
+1. Final full suite and normal release rebuild passed; verify the fixes on a
+   reliably running installed binary. The final emulator update attempt blocked.
 2. Finish the incomplete promise lifecycle/PIN cases, real export/import round
    trip and corrupt import rejection when the AVD is stable.
 3. Complete exact-artifact offline text-to-text, text-query-to-original-audio
@@ -201,4 +206,44 @@ as optional by the QA result.
 
 ## Final validation and delivery
 
-Pending final checks and delivery; update this section with observed results.
+Closure continued on 24 October2026. Final source:292/292 Flutter tests pass;
+analyzer0; native8/8 pass. No application source changed after those checks.
+
+The normal-entry-point release build passed,753.7 seconds on the loaded host:
+
+```powershell
+flutter --no-version-check build apk --release --no-pub --split-per-abi --target-platform android-arm64,android-x64 --build-number 4016 -t lib/main.dart
+```
+
+The process-local `GRADLE_OPTS` set one worker and a2GB daemon heap with768MB
+metaspace/256MB code cache; the daemon log confirms that heap. Repository tooling
+versions and project heap defaults were preserved. Existing release signing still
+uses the development key; this is not a production-signing claim.
+
+| Fresh artifact | Version code | Bytes | SHA256 |
+| --- | --- | --- | --- |
+| `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` | 6016 | 52,459,937 | `09e6a62d04b09714024344d1bdb99097edcaae7168d92571947bc8ae2960768f` |
+| `build/app/outputs/flutter-apk/app-x86_64-release.apk` | 8016 | 58,894,967 | `ec7ed330ca779bde33cc4425daf684553f1ea361e28c36a6b476770714c4720c` |
+
+`aapt dump badging` confirms package `dev.cya.app`, minSDK24, targetSDK36.
+`aapt dump permissions` on the fresh release confirms no INTERNET or
+ACCESS_NETWORK_STATE. Existing alarm/boot/notification/biometric/audio and
+application-local receiver permissions remain.
+
+The isolated AVD was cold-started again after the competing build ended. Android
+eventually reported `sys.boot_completed=1`, but System UI suffered an ANR and
+package installation/accessibility operations stalled. Last observed installed
+version was8015; no successful8016 install result was obtained. The initial
+install retry before boot reported missing package service, an environment/startup
+error. Bluetooth also recorded a native abort during boot. Host free RAM was
+approximately0.4GB during this attempt. Our AVD was stopped after collecting the
+failure evidence; no other applications or builds were stopped during closure.
+
+Consequently, cases21/29 and30–33, fixed-release GUI confirmation, reboot alarm
+verification and the remaining edge cases stay incomplete/not run. A built APK
+and host tests do not close these gates. The matrix above retains those limits.
+Do not represent this as every feature passing or all product phases complete.
+
+Delivery uses seven meaningful commits on main under Adi-Sin101, with no coauthor;
+the final response records verified push status. APKs/model files/local exports,
+credentials and raw private data are excluded from Git.

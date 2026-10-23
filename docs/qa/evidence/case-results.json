@@ -1,0 +1,218 @@
+{
+  "scope": "Synthetic CyaQA_20261023 only; latest recorded outcome per case. Harness failures remain failures, not confirmed app defects. Not-run cases are listed in the readable report.",
+  "cases": [
+    {
+      "case": "01-onboarding-permission-declined",
+      "status": "pass",
+      "seconds": 21.53,
+      "evidence": "01-onboarding-permission-declined.png",
+      "attempts": 2
+    },
+    {
+      "case": "02-text-capture",
+      "status": "pass",
+      "seconds": 15.36,
+      "evidence": "02-text-capture.png",
+      "attempts": 2
+    },
+    {
+      "case": "03-bangla-capture",
+      "status": "pass",
+      "seconds": 17.82,
+      "evidence": "03-bangla-capture.png",
+      "attempts": 2
+    },
+    {
+      "case": "04-banglish-capture",
+      "status": "pass",
+      "seconds": 14.21,
+      "evidence": "04-banglish-capture.png",
+      "attempts": 1
+    },
+    {
+      "case": "05-draft-discard-confirmation",
+      "status": "pass",
+      "seconds": 18.14,
+      "evidence": "05-draft-discard-confirmation.png",
+      "attempts": 1
+    },
+    {
+      "case": "06-microphone-denied",
+      "status": "pass",
+      "seconds": 14.28,
+      "evidence": "06-microphone-denied.png",
+      "attempts": 1
+    },
+    {
+      "case": "07-record-review-play-save",
+      "status": "pass",
+      "seconds": 26.76,
+      "evidence": "07-record-review-play-save.png",
+      "attempts": 2
+    },
+    {
+      "case": "08-interrupted-recording-recovery",
+      "status": "pass",
+      "seconds": 29.39,
+      "evidence": "08-interrupted-recording-recovery.png",
+      "attempts": 1
+    },
+    {
+      "case": "09-home-garden-return",
+      "status": "pass",
+      "seconds": 6.9,
+      "evidence": "09-home-garden-return.png",
+      "attempts": 2
+    },
+    {
+      "case": "10-profile-garden-return",
+      "status": "pass",
+      "seconds": 8.71,
+      "evidence": "10-profile-garden-return.png",
+      "attempts": 2
+    },
+    {
+      "case": "11-missing-model-controls",
+      "status": "pass",
+      "seconds": 7.84,
+      "evidence": "11-missing-model-controls.png",
+      "attempts": 1
+    },
+    {
+      "case": "12-multilingual-keyword-search",
+      "status": "pass",
+      "seconds": 44.83,
+      "evidence": "12-multilingual-keyword-search.png",
+      "attempts": 6
+    },
+    {
+      "case": "13-edit-preserves-original-history",
+      "status": "pass",
+      "seconds": 37.33,
+      "evidence": "13-edit-preserves-original-history.png",
+      "attempts": 2
+    },
+    {
+      "case": "14-source-linked-branch",
+      "status": "pass",
+      "seconds": 22.38,
+      "evidence": "14-source-linked-branch.png",
+      "attempts": 1
+    },
+    {
+      "case": "15-memory-archive-restore-delete",
+      "status": "pass",
+      "seconds": 40.73,
+      "evidence": "15-memory-archive-restore-delete.png",
+      "attempts": 3
+    },
+    {
+      "case": "16-create-and-open-topic",
+      "status": "pass",
+      "seconds": 21.94,
+      "evidence": "16-create-and-open-topic.png",
+      "attempts": 1
+    },
+    {
+      "case": "17-focus-pause-restart-capture-end",
+      "status": "pass",
+      "seconds": 33.05,
+      "evidence": "17-focus-pause-restart-capture-end.png",
+      "attempts": 3
+    },
+    {
+      "case": "18-create-and-select-routine",
+      "status": "pass",
+      "seconds": 27.03,
+      "evidence": "18-create-and-select-routine.png",
+      "attempts": 1
+    },
+    {
+      "case": "19-skip-replan-adjust-complete-history",
+      "status": "pass",
+      "seconds": 20.99,
+      "evidence": "19-skip-replan-adjust-complete-history.png",
+      "attempts": 1
+    },
+    {
+      "case": "20-daily-review-note",
+      "status": "pass",
+      "seconds": 18.5,
+      "evidence": "20-daily-review-note.png",
+      "attempts": 1
+    },
+    {
+      "case": "21-promise-presets-snooze-done-reopen-archive",
+      "status": "fail",
+      "error": "AssertionError: Expected in scrollable content: Let it go (archive)",
+      "seconds": 34.58,
+      "evidence": "21-promise-presets-snooze-done-reopen-archive.png",
+      "attempts": 1
+    },
+    {
+      "case": "22-cold-native-share-and-process-text",
+      "status": "pass",
+      "seconds": 14.7,
+      "evidence": "22-cold-native-share-and-process-text.png",
+      "attempts": 1
+    },
+    {
+      "case": "23-real-remoteviews-in-test-host",
+      "status": "pass",
+      "seconds": 19.64,
+      "evidence": "23-real-remoteviews-in-test-host.png",
+      "attempts": 6
+    },
+    {
+      "case": "24-custom-promise-and-real-alarm-scheduling",
+      "status": "pass",
+      "seconds": 25.95,
+      "evidence": "24-custom-promise-and-real-alarm-scheduling.png",
+      "attempts": 1
+    },
+    {
+      "case": "25-delivered-notification-done-action",
+      "status": "pass",
+      "seconds": 19.76,
+      "evidence": "25-delivered-notification-done-action.png",
+      "attempts": 2
+    },
+    {
+      "case": "26-start-real-15-minute-expiry-probe",
+      "status": "pass",
+      "seconds": 17.46,
+      "evidence": "26-start-real-15-minute-expiry-probe.png",
+      "attempts": 2
+    },
+    {
+      "case": "27-time-passage-does-not-complete-routine",
+      "status": "pass",
+      "seconds": 10.34,
+      "evidence": "27-time-passage-does-not-complete-routine.png",
+      "attempts": 3
+    },
+    {
+      "case": "28-system-quick-settings-native-capture",
+      "status": "pass",
+      "seconds": 15.41,
+      "evidence": "28-system-quick-settings-native-capture.png",
+      "attempts": 1
+    },
+    {
+      "case": "29-profile-theme-pin-wrong-pin-unlock-remove",
+      "status": "fail",
+      "error": "AssertionError: Expected visible: Profile",
+      "seconds": 63.06,
+      "evidence": "29-profile-theme-pin-wrong-pin-unlock-remove.png",
+      "attempts": 2
+    },
+    {
+      "case": "29b-persisted-pin-wrong-pin-unlock-remove",
+      "status": "fail",
+      "error": "ParseError: INSTRUMENTATION_RESULT: error=java.lang.IllegalStateException: No active accessibility window\r\nINSTRUMENTATION_CODE: 1\r\n",
+      "seconds": 82.87,
+      "evidence": "29b-persisted-pin-wrong-pin-unlock-remove.png",
+      "attempts": 2
+    }
+  ]
+}
