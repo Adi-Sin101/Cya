@@ -1,0 +1,13 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.cya.qafixture">
+  <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+  <application android:label="Cya QA Fixture" android:theme="@android:style/Theme.Material.Light.NoActionBar" android:allowBackup="false">
+    <activity android:name=".FixtureActivity" android:exported="true">
+      <intent-filter>
+        <action android:name="android.intent.action.SEND" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <data android:mimeType="application/json" />
+        <data android:mimeType="application/zip" />
+      </intent-filter>
+    </activity>
+  </application>
+</manifest>

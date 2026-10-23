@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="dev.cya.qadriver">
+  <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+  <application android:label="Cya QA Driver" android:allowBackup="false" />
+  <instrumentation android:name="dev.cya.qafixture.QaInstrumentation" android:targetPackage="dev.cya.qadriver" android:label="Cya QA accessibility snapshot" />
+</manifest>
