@@ -24,6 +24,12 @@ void main(List<String> args) {
   }
 
   final file = File(args.first);
+  if (file.path.toLowerCase().endsWith('.zip')) {
+    stderr.writeln(
+      'Extract manifest.json from the archive and pass that JSON file to this tool.',
+    );
+    exit(64);
+  }
   if (!file.existsSync()) {
     stderr.writeln('No such file: ${args.first}');
     exit(66);
@@ -44,9 +50,16 @@ void main(List<String> args) {
   // Refuse a shape this script was not written against rather than misreading
   // it — a metric that is quietly wrong is worse than one that is missing.
   final version = document['formatVersion'];
-  if (version != 1) {
+  if (version != 1 &&
+      version != 2 &&
+      version != 3 &&
+      version != 4 &&
+      version != 5 &&
+      version != 6 &&
+      version != 7 &&
+      version != 8) {
     stderr.writeln(
-      'Export format v$version, but this script understands v1. '
+      'Export format v$version, but this script understands v1 through v8. '
       'Update tool/metrics.dart.',
     );
     exit(65);
@@ -133,8 +146,9 @@ class _Report {
     }
     final resolved = byStatus['resolved'] ?? 0;
     out.writeln('RESOLUTION');
-    for (final entry in byStatus.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value))) {
+    for (final entry
+        in byStatus.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value))) {
       out.writeln('  ${entry.key.padRight(20)} ${entry.value}');
     }
     out
@@ -181,10 +195,14 @@ class _Report {
     out
       ..writeln('  Samples              ${gaps.length}')
       ..writeln('  Median               ${_duration(gaps[gaps.length ~/ 2])}')
-      ..writeln('  p90                  '
-          '${_duration(gaps[((gaps.length - 1) * 0.9).round()])}')
-      ..writeln('  Within the hour      '
-          '${_percent(gaps.where((g) => g.inMinutes <= 60).length, gaps.length)}')
+      ..writeln(
+        '  p90                  '
+        '${_duration(gaps[((gaps.length - 1) * 0.9).round()])}',
+      )
+      ..writeln(
+        '  Within the hour      '
+        '${_percent(gaps.where((g) => g.inMinutes <= 60).length, gaps.length)}',
+      )
       ..writeln();
   }
 

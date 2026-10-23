@@ -6,8 +6,7 @@ import 'package:flutter/services.dart';
 /// the Share Sheet capture path has to open the same file with no Flutter
 /// engine running at all. Dart is the *second* reader here, not the owner.
 ///
-/// The key crosses the method channel and no further. There is no `INTERNET`
-/// permission in the manifest, so there is nowhere for it to go.
+/// The key crosses the local method channel to configure the shared store.
 class DatabaseKeyPort {
   const DatabaseKeyPort([this._channel = _defaultChannel]);
 
@@ -15,20 +14,24 @@ class DatabaseKeyPort {
 
   final MethodChannel _channel;
 
-  /// The raw key in SQLCipher's `x'<64 hex>'` form, or `null` where there is no
-  /// native side.
-  ///
-  /// `null` is a real answer, not a failure: `flutter test` and the desktop
-  /// builds have no Keystore and no encrypted file, and refusing to open at all
-  /// there would trade a security property this app cannot provide off-device
-  /// for a test suite that cannot run.
-  Future<String?> rawKey() async {
+  /// Android must fail closed. Unsupported hosts may explicitly permit a
+  /// missing native implementation; an actual native error always propagates.
+  Future<String?> rawKey({bool encryptionRequired = true}) async {
+    final String? key;
     try {
-      return await _channel.invokeMethod<String>('databaseKey');
+      key = await _channel.invokeMethod<String>('databaseKey');
     } on MissingPluginException {
-      return null;
-    } on PlatformException {
+      if (encryptionRequired) rethrow;
       return null;
     }
+    if (key == null && !encryptionRequired) return null;
+    if (key == null ||
+        key.length != 67 ||
+        !RegExp(r"^x'[0-9a-fA-F]{64}'$").hasMatch(key)) {
+      throw StateError(
+        'The native store did not provide a valid database key.',
+      );
+    }
+    return key;
   }
 }

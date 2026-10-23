@@ -5,13 +5,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/cya_colors_extension.dart';
 import '../../../core/utils/cya_haptics.dart';
 
-/// The notched bottom navigation bar (PRD §8.2): Home · Promises · (+) · Garden
-/// · Profile. The center slot is a gap for the docked capture FAB, so the four
-/// visual items map directly to the four shell branch indices.
-///
-/// Selection is animated per item rather than by moving a shared indicator: the
-/// four tabs are far apart around a notch, and a pill sliding across the gap
-/// draws the eye to the empty middle instead of to where you landed.
+/// Five preserved destinations with memory and voice within immediate reach.
 class CyaBottomNav extends StatelessWidget {
   const CyaBottomNav({
     super.key,
@@ -26,11 +20,20 @@ class CyaBottomNav extends StatelessWidget {
       <({IconData icon, IconData active, String label})>[
         (icon: Icons.home_outlined, active: Icons.home_rounded, label: 'Home'),
         (
+          icon: Icons.auto_stories_outlined,
+          active: Icons.auto_stories_rounded,
+          label: 'Memories',
+        ),
+        (
+          icon: Icons.wb_twilight_outlined,
+          active: Icons.wb_twilight_rounded,
+          label: 'Rhythm',
+        ),
+        (
           icon: Icons.bookmark_border_rounded,
           active: Icons.bookmark_rounded,
           label: 'Promises',
         ),
-        (icon: Icons.spa_outlined, active: Icons.spa_rounded, label: 'Garden'),
         (
           icon: Icons.person_outline_rounded,
           active: Icons.person_rounded,
@@ -53,9 +56,7 @@ class CyaBottomNav extends StatelessWidget {
       },
     );
 
-    // Elevation rather than a drawn top border: a border is a straight line
-    // and would cut across the FAB's notch, which reads as a rendering bug.
-    // The shadow follows the notched shape for free.
+    // Reuse the app's soft surface and selected-pill motion.
     return BottomAppBar(
       color: colors.surface,
       surfaceTintColor: Colors.transparent,
@@ -63,16 +64,8 @@ class CyaBottomNav extends StatelessWidget {
       shadowColor: context.cyaColors.shadow,
       height: 78,
       padding: EdgeInsets.zero,
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 10,
       child: Row(
-        children: <Widget>[
-          item(0),
-          item(1),
-          const SizedBox(width: 72),
-          item(2),
-          item(3),
-        ],
+        children: <Widget>[item(0), item(1), item(2), item(3), item(4)],
       ),
     );
   }
@@ -121,7 +114,7 @@ class _NavItem extends StatelessWidget {
                   duration: duration,
                   curve: AppMotion.standard,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.lg,
+                    horizontal: AppSpacing.sm,
                     vertical: AppSpacing.xs + 1,
                   ),
                   decoration: BoxDecoration(
@@ -148,7 +141,11 @@ class _NavItem extends StatelessWidget {
                             : FontWeight.w500,
                       ) ??
                       const TextStyle(),
-                  child: Text(label),
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
               ],
             ),

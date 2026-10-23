@@ -58,7 +58,7 @@ final class StorageError extends AppError {
   final StackTrace? stackTrace;
 
   @override
-  String get message => "Couldn't save that. Your promise is still here.";
+  String get message => "Couldn't complete that change. Check your saved data and try again.";
 }
 
 /// The promise no longer exists (deleted on another surface, for instance).

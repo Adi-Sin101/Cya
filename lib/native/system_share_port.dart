@@ -17,6 +17,27 @@ class SystemSharePort {
 
   final MethodChannel _channel;
 
+  Future<void> clearCachedExports() async {
+    try {
+      await _channel.invokeMethod<void>('clearCachedExports');
+    } on MissingPluginException {
+      /* No native export cache on unsupported hosts. */
+    }
+  }
+
+  Future<bool> shareArchive({
+    required String fileName,
+    required String manifest,
+    required List<Map<String, Object?>> attachments,
+  }) async {
+    return await _channel.invokeMethod<bool>('shareArchive', {
+          'fileName': fileName,
+          'manifest': manifest,
+          'attachments': attachments,
+        }) ??
+        false;
+  }
+
   /// Writes [content] to a cache file called [fileName] and opens the share
   /// sheet for it. Returns whether the sheet was shown.
   ///
@@ -30,15 +51,13 @@ class SystemSharePort {
     String? title,
   }) async {
     try {
-      return await _channel.invokeMethod<bool>(
-            'shareDocument',
-            <String, Object?>{
-              'fileName': fileName,
-              'content': content,
-              'mimeType': mimeType,
-              'title': title ?? 'Your Cya! data',
-            },
-          ) ??
+      return await _channel
+              .invokeMethod<bool>('shareDocument', <String, Object?>{
+                'fileName': fileName,
+                'content': content,
+                'mimeType': mimeType,
+                'title': title ?? 'Your Cya! data',
+              }) ??
           false;
     } on MissingPluginException {
       return false;

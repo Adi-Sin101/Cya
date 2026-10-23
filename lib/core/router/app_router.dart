@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,20 +7,22 @@ import '../../presentation/screens/achievements/achievements_screen.dart';
 import '../../presentation/screens/digest/digest_screen.dart';
 import '../../presentation/screens/garden/garden_screen.dart';
 import '../../presentation/screens/home/home_screen.dart';
+import '../../presentation/screens/memories/memories_screen.dart';
+import '../../presentation/screens/memories/local_model_screen.dart';
 import '../../presentation/screens/onboarding/lock_setup_screen.dart';
 import '../../presentation/screens/onboarding/onboarding_screen.dart';
 import '../../presentation/screens/onboarding/profile_setup_screen.dart';
 import '../../presentation/screens/profile/profile_screen.dart';
 import '../../presentation/screens/promise_detail/promise_detail_screen.dart';
 import '../../presentation/screens/promises/promises_screen.dart';
+import '../../presentation/screens/routines/day_plan_screen.dart';
 import '../../presentation/shell/home_shell.dart';
 import 'route_paths.dart';
 
 /// The app's [GoRouter], exposed through Riverpod for DI.
 ///
 /// A [StatefulShellRoute.indexedStack] gives each bottom-nav tab its own
-/// navigator + preserved state. The center capture (+) is a docked FAB, not a
-/// branch (see [HomeShell]).
+/// navigator + preserved state. Corner capture opens voice, text or promise.
 final goRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: RoutePaths.home,
@@ -45,6 +47,17 @@ final goRouterProvider = Provider<GoRouter>((ref) {
     // user on the last slide.
     refreshListenable: _OnboardingSignal(ref),
     routes: <RouteBase>[
+      GoRoute(
+        path: RoutePaths.localModel,
+        builder: (context, state) => const LocalModelScreen(),
+      ),
+      GoRoute(
+        path: RoutePaths.garden,
+        builder: (context, state) => Scaffold(
+          appBar: AppBar(title: const Text('Garden')),
+          body: const GardenScreen(),
+        ),
+      ),
       GoRoute(
         path: RoutePaths.onboarding,
         builder: (context, state) => const OnboardingScreen(),
@@ -74,16 +87,24 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: RoutePaths.promises,
-                builder: (context, state) => const PromisesScreen(),
+                path: RoutePaths.memories,
+                builder: (context, state) => const MemoriesScreen(),
               ),
             ],
           ),
           StatefulShellBranch(
             routes: <RouteBase>[
               GoRoute(
-                path: RoutePaths.garden,
-                builder: (context, state) => const GardenScreen(),
+                path: RoutePaths.rhythm,
+                builder: (context, state) => const DayPlanScreen(),
+              ),
+            ],
+          ),
+          StatefulShellBranch(
+            routes: <RouteBase>[
+              GoRoute(
+                path: RoutePaths.promises,
+                builder: (context, state) => const PromisesScreen(),
               ),
             ],
           ),
@@ -99,8 +120,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: RoutePaths.lockSettings,
-        builder: (context, state) =>
-            const LockSetupScreen(isOnboarding: false),
+        builder: (context, state) => const LockSetupScreen(isOnboarding: false),
       ),
       GoRoute(
         path: RoutePaths.digest,

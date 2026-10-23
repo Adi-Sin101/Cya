@@ -11,7 +11,11 @@ import android.provider.Settings
 import dev.cya.app.identity.BiometricGate
 import dev.cya.app.identity.DatabaseKey
 import dev.cya.app.identity.DeviceReliability
+import dev.cya.app.memory.EmbeddingBridge
+import dev.cya.app.memory.VoiceBridge
 import dev.cya.app.privacy.DocumentShare
+import dev.cya.app.privacy.ArchiveAttachment
+import dev.cya.app.privacy.ImportBridge
 import dev.cya.app.reminders.DraftHandoff
 import dev.cya.app.reminders.ReminderNotifications
 import dev.cya.app.reminders.ReminderScheduler
@@ -31,6 +35,12 @@ class MainActivity : FlutterActivity() {
 
     private var channel: MethodChannel? = null
     private var pendingDeepLink: String? = null
+    private val embeddingDelegate = lazy { EmbeddingBridge(this) }
+    private val embeddings by embeddingDelegate
+    private val voiceDelegate = lazy { VoiceBridge(this) }
+    private val voice by voiceDelegate
+    private val importDelegate = lazy { ImportBridge(this) }
+    private val imports by importDelegate
 
     /**
      * The in-flight notification permission request.
@@ -44,6 +54,12 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cya/imports")
+            .setMethodCallHandler { call, result -> imports.handle(call, result) }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cya/embeddings")
+            .setMethodCallHandler { call, result -> embeddings.handle(call, result) }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "cya/audio")
+            .setMethodCallHandler { call, result -> voice.handle(call, result) }
         ReminderNotifications.ensureChannels(this)
 
         channel = MethodChannel(
@@ -115,6 +131,30 @@ class MainActivity : FlutterActivity() {
 
                     // --- Data export (PRD 9.3) ---
 
+                    "clearCachedExports" -> {
+                        Thread {
+                            try { DocumentShare.clearCachedExports(this); runOnUiThread { result.success(null) } }
+                            catch (error: Exception) { runOnUiThread { result.error("cleanup_failed", "Could not clear private caches.", null) } }
+                        }.start()
+                    }
+                    "shareArchive" -> {
+                        val fileName = call.argument<String>("fileName")
+                        val manifest = call.argument<String>("manifest")
+                        val values = call.argument<List<Map<String, Any>>>("attachments")
+                        if (fileName == null || manifest == null || values == null) {
+                            result.error("bad_args", "Archive metadata is required.", null)
+                        } else Thread {
+                            try {
+                                val attachments = values.map { ArchiveAttachment(it["id"] as String,
+                                    it["fileName"] as String,it["sha256"] as String,(it["byteLength"] as Number).toLong()) }
+                                val file = DocumentShare.prepareArchive(this, fileName, manifest, attachments)
+                                runOnUiThread { result.success(DocumentShare.shareArchive(this, file)) }
+                            } catch (error: Exception) {
+                                runOnUiThread { result.error("export_failed", "Could not prepare a complete archive. Original data is unchanged.", null) }
+                            }
+                        }.start()
+                    }
+
                     "shareDocument" -> result.success(
                         DocumentShare.share(
                             activity = this,
@@ -178,6 +218,30 @@ class MainActivity : FlutterActivity() {
         val link = deepLinkFrom(intent) ?: return
         // If Dart is already running it routes immediately; otherwise it asks on startup.
         channel?.invokeMethod("onDeepLink", link) ?: run { pendingDeepLink = link }
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (importDelegate.isInitialized() && imports.onResult(requestCode, resultCode, data)) return
+        if (requestCode == EmbeddingBridge.REQUEST_MODEL &&
+            embeddings.onActivityResult(requestCode, resultCode, data)) return
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    override fun onDestroy() {
+        if (importDelegate.isInitialized()) imports.close()
+        if (voiceDelegate.isInitialized()) voice.close()
+        if (embeddingDelegate.isInitialized()) embeddings.close()
+        super.onDestroy()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (voiceDelegate.isInitialized()) voice.foreground()
+    }
+
+    override fun onPause() {
+        if (voiceDelegate.isInitialized()) voice.background()
+        super.onPause()
     }
 
     /**
@@ -252,6 +316,10 @@ class MainActivity : FlutterActivity() {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == VoiceBridge.REQUEST_AUDIO && voiceDelegate.isInitialized()) {
+            voice.permission(grantResults.isNotEmpty() && grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED)
+            return
+        }
         if (requestCode != NOTIFICATION_PERMISSION_REQUEST) return
         val granted = grantResults.isNotEmpty() &&
             grantResults[0] == android.content.pm.PackageManager.PERMISSION_GRANTED

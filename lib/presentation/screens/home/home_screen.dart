@@ -11,7 +11,9 @@ import '../../../domain/projections/garden_projection.dart';
 import '../../providers/intention_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../widgets/motion/entrance.dart';
+import '../../widgets/garden_doorway.dart';
 import '../../widgets/motion/reward_burst.dart';
+import '../memories/journal_capture_card.dart';
 import 'widgets/home_greeting_header.dart';
 import 'widgets/promise_list_section.dart';
 import 'widgets/reminder_health_banner.dart';
@@ -40,6 +42,12 @@ class HomeScreen extends StatelessWidget {
         ),
         children: <Widget>[
           const Entrance(child: _GreetingSection()),
+          const SizedBox(height: AppSpacing.lg),
+          const Entrance(
+            child: GardenDoorway(key: ValueKey('home-garden-preview')),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          const Entrance(child: JournalCaptureCard(showLibrary: true)),
           const SizedBox(height: AppSpacing.xl),
           const ReminderHealthBanner(),
           const Entrance(
@@ -139,7 +147,7 @@ class _WeekSection extends ConsumerWidget {
           ? const <GardenPlant>[]
           : scene.beds.last.plants,
       now: ref.watch(clockProvider)(),
-      onTap: () => context.go(RoutePaths.garden),
+      onTap: () => context.push(RoutePaths.garden),
     );
   }
 }

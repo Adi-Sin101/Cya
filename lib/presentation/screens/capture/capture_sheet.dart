@@ -17,6 +17,7 @@ import '../../../domain/usecases/capture_intention.dart';
 Future<void> showCaptureSheet(BuildContext context) {
   return showModalBottomSheet<void>(
     context: context,
+    useRootNavigator: true,
     isScrollControlled: true,
     builder: (_) => const CaptureSheet(),
   );

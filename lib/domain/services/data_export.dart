@@ -21,7 +21,7 @@ abstract final class DataExport {
   /// Bumped whenever the document's shape changes, so an importer — or
   /// `tool/metrics.dart` — can refuse a file it does not understand instead of
   /// silently misreading it.
-  static const int formatVersion = 1;
+  static const int formatVersion = 8;
 
   /// Preference keys withheld from the export.
   ///
@@ -29,6 +29,8 @@ abstract final class DataExport {
   /// failed-attempt state, which would otherwise let someone reset a cooldown
   /// by re-importing an older file.
   static const Set<String> redactedPreferenceKeys = <String>{
+    // Device-local running clock projection; session history is exported separately.
+    'focus_timer_v1',
     'lock_pin_salt',
     'lock_pin_hash',
     'lock_pin_iterations',
@@ -42,6 +44,22 @@ abstract final class DataExport {
     required List<Intention> intentions,
     required List<IntentionEvent> events,
     required Map<String, String> preferences,
+    List<Map<String, Object?>> memories = const [],
+    List<Map<String, Object?>> memoryRevisions = const [],
+    List<Map<String, Object?>> memoryEvents = const [],
+    List<Map<String, Object?>> memoryLinks = const [],
+    List<Map<String, Object?>> memoryAttachments = const [],
+    List<Map<String, Object?>> focusSessions = const [],
+    List<Map<String, Object?>> focusEvents = const [],
+    List<Map<String, Object?>> collections = const [],
+    List<Map<String, Object?>> collectionEvents = const [],
+    List<Map<String, Object?>> memoryAssignments = const [],
+    List<Map<String, Object?>> routines = const [],
+    List<Map<String, Object?>> routineRevisions = const [],
+    List<Map<String, Object?>> routineEvents = const [],
+    List<Map<String, Object?>> routineOccurrences = const [],
+    List<Map<String, Object?>> routineOccurrenceEvents = const [],
+    List<Map<String, Object?>> localReviews = const [],
   }) {
     return <String, Object?>{
       'format': 'cya.export',
@@ -55,6 +73,22 @@ abstract final class DataExport {
       'counts': <String, Object?>{
         'intentions': intentions.length,
         'events': events.length,
+        'memories': memories.length,
+        'memoryRevisions': memoryRevisions.length,
+        'memoryEvents': memoryEvents.length,
+        'memoryLinks': memoryLinks.length,
+        'memoryAttachments': memoryAttachments.length,
+        'focusSessions': focusSessions.length,
+        'focusEvents': focusEvents.length,
+        'collections': collections.length,
+        'collectionEvents': collectionEvents.length,
+        'memoryAssignments': memoryAssignments.length,
+        'routines': routines.length,
+        'routineRevisions': routineRevisions.length,
+        'routineEvents': routineEvents.length,
+        'routineOccurrences': routineOccurrences.length,
+        'routineOccurrenceEvents': routineOccurrenceEvents.length,
+        'localReviews': localReviews.length,
       },
       'preferences': <String, Object?>{
         for (final entry in preferences.entries)
@@ -65,6 +99,22 @@ abstract final class DataExport {
         for (final intention in intentions) _intention(intention),
       ],
       'events': <Object?>[for (final event in events) _event(event)],
+      'memories': memories,
+      'memoryRevisions': memoryRevisions,
+      'memoryEvents': memoryEvents,
+      'memoryLinks': memoryLinks,
+      'memoryAttachments': memoryAttachments,
+      'focusSessions': focusSessions,
+      'focusEvents': focusEvents,
+      'collections': collections,
+      'collectionEvents': collectionEvents,
+      'memoryAssignments': memoryAssignments,
+      'routines': routines,
+      'routineRevisions': routineRevisions,
+      'routineEvents': routineEvents,
+      'routineOccurrences': routineOccurrences,
+      'routineOccurrenceEvents': routineOccurrenceEvents,
+      'localReviews': localReviews,
     };
   }
 

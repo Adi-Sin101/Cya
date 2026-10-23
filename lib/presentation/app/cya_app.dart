@@ -7,6 +7,7 @@ import '../../core/router/route_paths.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/system_chrome.dart';
 import '../providers/identity_providers.dart';
+import '../providers/intention_providers.dart';
 import '../providers/reminder_providers.dart';
 import '../providers/settings_providers.dart';
 import '../screens/lock/lock_gate.dart';
@@ -65,6 +66,9 @@ class _CyaAppState extends ConsumerState<CyaApp> with WidgetsBindingObserver {
       ref.read(sessionLockProvider.notifier).lock();
     }
     _leftAt = null;
+
+    ref.read(databaseProvider).refreshAfterNativeWrites();
+    ref.invalidate(intentionSearchProvider);
 
     // Cheap insurance against an OEM that dropped alarms while we were away,
     // and a fresh look at whether reminders are actually arriving (PRD §12).

@@ -5,6 +5,11 @@ import '../../data/dao/intention_dao.dart';
 import '../../data/dao/preference_dao.dart';
 import '../../data/db/cya_database.dart';
 import '../../data/repositories/drift_intention_repository.dart';
+import '../../data/repositories/drift_memory_repository.dart';
+import '../../domain/repositories/memory_repository.dart';
+import '../../domain/audio/audio_attachments.dart';
+import '../../data/services/local_audio_files.dart';
+import '../../data/services/attachment_cleanup.dart';
 import '../../data/seed/demo_seed.dart';
 import '../../domain/repositories/intention_repository.dart';
 import '../../domain/services/reminder_scheduler.dart';
@@ -33,6 +38,22 @@ final databaseProvider = Provider<CyaDatabase>((ref) {
 
 final intentionDaoProvider = Provider<IntentionDao>(
   (ref) => ref.watch(databaseProvider).intentionDao,
+);
+
+final memoryRepositoryProvider = Provider<MemoryRepository>(
+  (ref) => DriftMemoryRepository(
+    ref.watch(databaseProvider),
+    audioFiles: ref.watch(audioAttachmentsProvider),
+  ),
+);
+final audioAttachmentsProvider = Provider<AudioAttachments>(
+  (ref) => LocalAudioFiles(),
+);
+final attachmentCleanupProvider = Provider<AttachmentCleanupService>(
+  (ref) => AttachmentCleanupService(
+    ref.watch(databaseProvider),
+    ref.watch(audioAttachmentsProvider),
+  ),
 );
 
 final preferenceDaoProvider = Provider<PreferenceDao>(

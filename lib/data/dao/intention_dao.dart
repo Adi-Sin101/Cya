@@ -509,15 +509,14 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
   }) {
     return transaction(() async {
       final stale =
-          await (select(intentions)
-                ..where(
-                  (t) =>
-                      t.status.isIn(<String>[
-                        IntentionStatus.open.wire,
-                        IntentionStatus.snoozed.wire,
-                      ]) &
-                      t.updatedAt.isSmallerOrEqualValue(cutoff),
-                ))
+          await (select(intentions)..where(
+                (t) =>
+                    t.status.isIn(<String>[
+                      IntentionStatus.open.wire,
+                      IntentionStatus.snoozed.wire,
+                    ]) &
+                    t.updatedAt.isSmallerOrEqualValue(cutoff),
+              ))
               .get();
       if (stale.isEmpty) return const <int>[];
 
@@ -603,6 +602,15 @@ class IntentionDao extends DatabaseAccessor<CyaDatabase>
   /// later capture is not searched against ghosts.
   Future<void> eraseEverything() async {
     await transaction(() async {
+      await customStatement(
+        'INSERT OR IGNORE INTO attachment_cleanup(file_name,created_at) '
+        'SELECT file_name, ? FROM memory_attachments',
+        [DateTime.now().millisecondsSinceEpoch ~/ 1000],
+      );
+      await delete(attachedDatabase.memories).go();
+      await delete(attachedDatabase.focusSessions).go();
+      await delete(attachedDatabase.memoryCollections).go();
+      await delete(attachedDatabase.routines).go();
       await delete(intentionEvents).go();
       await delete(intentions).go();
     });

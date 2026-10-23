@@ -8,6 +8,8 @@ import '../../native/database_key_port.dart';
 import '../dao/intention_dao.dart';
 import '../dao/preference_dao.dart';
 import 'tables.dart';
+import 'memory_tables.dart';
+import 'routine_tables.dart';
 
 part 'cya_database.g.dart';
 
@@ -17,7 +19,30 @@ part 'cya_database.g.dart';
 /// so the schema, the file name and the on-disk value encodings are a
 /// cross-runtime contract documented in `docs/native_db_contract.md`.
 @DriftDatabase(
-  tables: [Intentions, IntentionEvents, Preferences],
+  tables: [
+    Intentions,
+    IntentionEvents,
+    Preferences,
+    Memories,
+    MemoryRevisions,
+    MemoryEvents,
+    MemoryJobs,
+    MemoryVectors,
+    MemoryLinks,
+    MemoryAttachments,
+    AttachmentCleanup,
+    FocusSessions,
+    FocusEvents,
+    MemoryCollections,
+    CollectionEvents,
+    MemoryAssignments,
+    Routines,
+    RoutineRevisions,
+    RoutineEvents,
+    RoutineOccurrences,
+    RoutineOccurrenceEvents,
+    LocalReviews,
+  ],
   daos: [IntentionDao, PreferenceDao],
 )
 class CyaDatabase extends _$CyaDatabase {
@@ -33,24 +58,89 @@ class CyaDatabase extends _$CyaDatabase {
   static const String databaseFileName = 'cya.db';
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 8;
+
+  /// Native SQLite commits bypass Drift's connection-local stream tracking.
+  /// Refresh active queries when Flutter resumes after capture or notification
+  /// actions; this performs no writes or work on the native capture path.
+  void refreshAfterNativeWrites() {
+    markTablesUpdated(allTables);
+  }
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (m) async {
-      await m.createAll();
-      await _createHotPathIndices();
+      await transaction(() async {
+        await m.createAll();
+        await _createHotPathIndices();
+        await customStatement('PRAGMA user_version = $schemaVersion');
+      });
     },
     onUpgrade: (m, from, to) async {
-      // v1 → v2: `source_package`, so a promise can show the real launcher
-      // icon of the app it came from. Additive and nullable, so rows written
-      // by a v1 native build stay valid.
-      if (from < 2) {
-        await m.addColumn(intentions, intentions.sourcePackage);
+      if (from > to) {
+        throw StateError('This database requires a newer version of Cya!.');
       }
-      await _createHotPathIndices();
+      await transaction(() async {
+        // v1 → v2: `source_package`, so a promise can show the real launcher
+        // icon of the app it came from. Additive and nullable, so rows written
+        // by a v1 native build stay valid.
+        if (from < 2) {
+          await m.addColumn(intentions, intentions.sourcePackage);
+        }
+        if (from < 3) {
+          await m.createTable(memories);
+          await m.createTable(memoryRevisions);
+          await m.createTable(memoryEvents);
+          await m.createTable(memoryJobs);
+        }
+        if (from < 4) {
+          if (from >= 3) {
+            await m.addColumn(memoryJobs, memoryJobs.nextSegment);
+            await m.addColumn(memoryJobs, memoryJobs.modelVersion);
+            await m.addColumn(memoryEvents, memoryEvents.metadata);
+          }
+          await m.createTable(memoryVectors);
+          await m.createTable(memoryLinks);
+        }
+        if (from < 5) {
+          await m.createTable(memoryAttachments);
+          await m.createTable(attachmentCleanup);
+        }
+        if (from < 6) {
+          await m.createTable(focusSessions);
+          await m.createTable(focusEvents);
+          // Preserve the prior preference as an observed legacy session; its
+          // original start time was never recorded and must not be invented.
+          await customStatement(
+            "INSERT INTO focus_sessions(id,priority,started_at) SELECT 'legacy-focus-' || lower(hex(randomblob(16))),value,CAST(strftime('%s','now') AS INTEGER) FROM preferences WHERE key='focus_priority' AND trim(value) != ''",
+          );
+          await customStatement(
+            "INSERT INTO focus_events(session_id,type,occurred_at) SELECT id,'legacy_observed',started_at FROM focus_sessions WHERE id LIKE 'legacy-focus-%'",
+          );
+        }
+        if (from < 7) {
+          await m.createTable(memoryCollections);
+          await m.createTable(collectionEvents);
+          await m.createTable(memoryAssignments);
+        }
+        if (from < 8) {
+          await m.createTable(routines);
+          await m.createTable(routineRevisions);
+          await m.createTable(routineEvents);
+          await m.createTable(routineOccurrences);
+          await m.createTable(routineOccurrenceEvents);
+          await m.createTable(localReviews);
+        }
+        await _verifyMemoryColumns();
+        await _createHotPathIndices();
+        await customStatement('PRAGMA user_version = $schemaVersion');
+      });
     },
     beforeOpen: (details) async {
+      if (details.versionBefore != null &&
+          details.versionBefore! > schemaVersion) {
+        throw StateError('This database requires a newer version of Cya!.');
+      }
       // Foreign keys are off by default in SQLite and must be enabled per
       // connection.
       await customStatement('PRAGMA foreign_keys = ON');
@@ -60,6 +150,41 @@ class CyaDatabase extends _$CyaDatabase {
       await reconcileSearchIndex();
     },
   );
+
+  Future<void> _verifyMemoryColumns() async {
+    for (final table in <TableInfo>[
+      memories,
+      memoryRevisions,
+      memoryEvents,
+      memoryJobs,
+      memoryVectors,
+      memoryLinks,
+      memoryAttachments,
+      attachmentCleanup,
+      focusSessions,
+      focusEvents,
+      memoryCollections,
+      collectionEvents,
+      memoryAssignments,
+      routines,
+      routineRevisions,
+      routineEvents,
+      routineOccurrences,
+      routineOccurrenceEvents,
+      localReviews,
+    ]) {
+      final columns = await customSelect(
+        'PRAGMA table_info(${table.actualTableName})',
+      ).get();
+      final names = columns.map((row) => row.read<String>('name')).toSet();
+      final expected = table.$columns.map((column) => column.$name).toSet();
+      if (names.length != expected.length || !names.containsAll(expected)) {
+        throw StateError(
+          'The memory schema is inconsistent. No upgrade was committed.',
+        );
+      }
+    }
+  }
 
   /// FTS5 index backing V1 on-device search (PRD §6.4).
   ///
@@ -177,7 +302,9 @@ LazyDatabase _openConnection() {
       '${CyaDatabase.databaseFileName}',
     );
 
-    final key = await const DatabaseKeyPort().rawKey();
+    final key = await const DatabaseKeyPort().rawKey(
+      encryptionRequired: Platform.isAndroid,
+    );
     if (key == null) return NativeDatabase.createInBackground(file);
 
     return NativeDatabase.createInBackground(

@@ -9,13 +9,14 @@ import '../../../core/utils/cya_haptics.dart';
 import '../../../domain/entities/lock_settings.dart';
 import '../../../native/biometric_port.dart';
 import '../../providers/identity_providers.dart';
-import '../../providers/intention_providers.dart';
 import '../../providers/privacy_providers.dart';
 import '../../providers/settings_providers.dart';
 import '../../widgets/motion/entrance.dart';
-import '../../widgets/profile_avatar_view.dart';
-import '../home/widgets/level_badge.dart';
+import '../../widgets/garden_doorway.dart';
+import 'profile_visuals.dart';
 import '../lock/widgets/pin_pad.dart';
+import 'import_backup_screen.dart';
+import 'storage_diagnostics_screen.dart';
 
 /// Profile: who Cya! thinks you are, and the handful of switches worth having
 /// (PRD §8.2).
@@ -42,36 +43,11 @@ class ProfileScreen extends ConsumerWidget {
           AppSpacing.navClearance,
         ),
         children: Entrance.staggered(<Widget>[
-          Row(
-            children: <Widget>[
-              ProfileAvatarView(
-                avatar: ref.watch(profileAvatarProvider),
-                size: 76,
-                selected: true,
-              ),
-              const SizedBox(width: AppSpacing.lg),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      name == null || name.trim().isEmpty ? 'You' : name,
-                      style: theme.textTheme.headlineMedium,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: AppSpacing.xs),
-                    Text(
-                      'Everything here stays on this phone.',
-                      style: theme.textTheme.bodyMedium,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          const ProfileIdentityVisual(),
           const SizedBox(height: AppSpacing.xl),
-          LevelBadge(level: ref.watch(userLevelProvider)),
+          const GardenDoorway(key: ValueKey('profile-garden-preview')),
+          const SizedBox(height: AppSpacing.xl),
+          const ProfileMilestones(),
           const SizedBox(height: AppSpacing.xxl),
 
           _SectionLabel('You'),
@@ -106,32 +82,14 @@ class ProfileScreen extends ConsumerWidget {
                 style: theme.textTheme.bodySmall,
               ),
               activeThumbColor: colors.primary,
+              inactiveThumbColor: colors.onSurfaceVariant,
+              inactiveTrackColor: colors.surfaceContainerHighest,
+              trackOutlineColor: WidgetStatePropertyAll(colors.outlineVariant),
             ),
           ),
 
           const SizedBox(height: AppSpacing.xxl),
-          _SectionLabel('Progress'),
-          _Tile(
-            icon: Icons.emoji_events_rounded,
-            title: 'Achievements',
-            subtitle: _achievementSubtitle(ref),
-            onTap: () => context.push(RoutePaths.achievements),
-          ),
-          const SizedBox(height: AppSpacing.md),
-          _Tile(
-            icon: Icons.local_florist_rounded,
-            title: 'Memory Garden',
-            subtitle: () {
-              final scene = ref.watch(gardenSceneProvider);
-              return switch (scene.totalGrowths) {
-                0 => 'Nothing growing yet',
-                1 => '1 promise kept',
-                final total => '$total promises kept',
-              };
-            }(),
-            onTap: () => context.go(RoutePaths.garden),
-          ),
-          const SizedBox(height: AppSpacing.md),
+          _SectionLabel('Review'),
           _Tile(
             icon: Icons.auto_stories_rounded,
             title: 'Weekly review',
@@ -140,6 +98,21 @@ class ProfileScreen extends ConsumerWidget {
           ),
 
           const SizedBox(height: AppSpacing.xxl),
+          _SectionLabel('Memory'),
+          _Tile(
+            icon: Icons.auto_stories_outlined,
+            title: 'Your memories',
+            subtitle: 'Thoughts, voice journals and connections',
+            onTap: () => context.go(RoutePaths.memories),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _Tile(
+            icon: Icons.hub_outlined,
+            title: 'Local semantic memory',
+            subtitle: 'Model, indexing and offline search',
+            onTap: () => context.push(RoutePaths.localModel),
+          ),
+          const SizedBox(height: AppSpacing.xxl),
           _SectionLabel('Privacy'),
           ..._lockTiles(context, ref),
         ]),
@@ -147,21 +120,12 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  String _achievementSubtitle(WidgetRef ref) {
-    final unlocked = ref
-        .watch(achievementsProvider)
-        .where((a) => a.isUnlocked)
-        .length;
-    return unlocked == 0
-        ? 'Your first badge is one promise away'
-        : '$unlocked unlocked';
-  }
-
   /// The device lock, and the fingerprint shortcut when one is possible
   /// (ADR-010). Shown under Privacy rather than under You, because this is the
   /// only control on the screen that changes who can read the promises.
   List<Widget> _lockTiles(BuildContext context, WidgetRef ref) {
-    final lock = ref.watch(lockSettingsProvider).valueOrNull ?? LockSettings.open;
+    final lock =
+        ref.watch(lockSettingsProvider).valueOrNull ?? LockSettings.open;
     final biometricReady =
         ref.watch(biometricAvailabilityProvider).valueOrNull ==
         BiometricAvailability.ready;
@@ -213,8 +177,28 @@ class ProfileScreen extends ConsumerWidget {
       _Tile(
         icon: Icons.download_rounded,
         title: 'Export my data',
-        subtitle: 'Every promise and every event, as a readable file',
+        subtitle: 'Readable backup with original audio. Not encrypted.',
         onTap: () => _export(context, ref),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      _Tile(
+        icon: Icons.upload_file_rounded,
+        title: 'Import a backup',
+        subtitle: 'Validate and add copies. Never overwrite.',
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(builder: (_) => const ImportBackupScreen()),
+        ),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      _Tile(
+        icon: Icons.storage_rounded,
+        title: 'Local storage and status',
+        subtitle: 'Counts, file sizes and pending local work',
+        onTap: () => Navigator.of(context, rootNavigator: true).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const StorageDiagnosticsScreen(),
+          ),
+        ),
       ),
       const SizedBox(height: AppSpacing.md),
       _Tile(
@@ -232,16 +216,14 @@ class ProfileScreen extends ConsumerWidget {
     final result = await ref.read(privacyControllerProvider).exportEverything();
     if (!context.mounted) return;
     result.fold(
-      (count) {
+      (_) {
         CyaHaptics.confirm(context);
         ScaffoldMessenger.of(context)
           ..hideCurrentSnackBar()
           ..showSnackBar(
             SnackBar(
-              content: Text(
-                count == 1
-                    ? '1 promise exported.'
-                    : '$count promises exported.',
+              content: const Text(
+                'Backup prepared. Choose where to save or share it.',
               ),
             ),
           );
@@ -271,9 +253,9 @@ class ProfileScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               const Text(
-                'Every promise, the whole history, your name and your PIN. '
-                'Nothing here is on a server, so there is no copy to restore '
-                'from. Export first if you want one.',
+                'Every promise, thought, original recording, history, name and PIN. '
+                'Cya! has no cloud recovery. Keep an export if you want a backup. '
+                'Copies you shared elsewhere remain under your control.',
               ),
               const SizedBox(height: AppSpacing.lg),
               TextField(

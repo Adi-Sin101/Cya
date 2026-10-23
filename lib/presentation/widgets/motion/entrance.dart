@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import '../../../core/theme/app_motion.dart';
@@ -55,6 +56,7 @@ class _EntranceState extends State<Entrance>
     duration: widget.duration,
   );
   bool _started = false;
+  Timer? _delay;
 
   @override
   void didChangeDependencies() {
@@ -64,7 +66,7 @@ class _EntranceState extends State<Entrance>
     if (AppMotion.isReduced(context)) {
       _controller.value = 1;
     } else {
-      Future<void>.delayed(widget.delay, () {
+      _delay = Timer(widget.delay, () {
         if (mounted) _controller.forward();
       });
     }
@@ -72,6 +74,7 @@ class _EntranceState extends State<Entrance>
 
   @override
   void dispose() {
+    _delay?.cancel();
     _controller.dispose();
     super.dispose();
   }

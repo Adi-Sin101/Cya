@@ -27,6 +27,7 @@ android {
 
     buildTypes {
         release {
+            proguardFiles("proguard-rules.pro")
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
@@ -41,6 +42,9 @@ kotlin {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
+    // Local CPU text + raw-audio embeddings; no HTTP client or runtime download.
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.0")
     // SQLCipher for the shared store (ADR-010). The Kotlin surfaces — Share Sheet capture,
     // notification actions, the widget, boot rescheduling — all open the same encrypted file the
     // Dart side opens through `sqlcipher_flutter_libs`, so the two must stay on SQLCipher 4.

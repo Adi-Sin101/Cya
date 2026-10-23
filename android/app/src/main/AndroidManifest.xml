@@ -13,7 +13,12 @@
          permission here - identity is local-only and there is nowhere to send
          it (PRD 3.5/5.7). -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Requested only when the user starts a local voice recording. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <application
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:label="Cya!"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round">

@@ -1,3 +1,10 @@
+// LiteRT-LM 0.18.0 contains Kotlin 2.4 metadata. This supported R8 patch
+// avoids metadata parsing warnings without upgrading Flutter/AGP/Kotlin.
+buildscript {
+    repositories { google(); mavenCentral() }
+    dependencies { classpath("com.android.tools:r8:9.1.56") }
+}
+
 allprojects {
     repositories {
         google()

@@ -291,22 +291,29 @@ internal class CyaStore(private val context: Context) {
         // (ADR-010). Converts a pre-encryption file on first touch.
         val db = DatabaseCipher.open(context, databaseFile(context))
         db.execSQL("PRAGMA foreign_keys = ON")
-        when {
-            db.version == 0 -> {
-                db.transaction { CyaDatabaseContract.CREATE_STATEMENTS.forEach(db::execSQL) }
-                db.version = CyaDatabaseContract.SCHEMA_VERSION
-            }
-
-            db.version < CyaDatabaseContract.SCHEMA_VERSION -> {
-                // Either runtime may be first to open an old file. Each statement is applied
-                // independently and a failure is swallowed, because the *other* runtime may have
-                // already applied it — "duplicate column" here means the upgrade succeeded, not
-                // that it failed (docs/native_db_contract.md).
-                CyaDatabaseContract.upgradeStatements(db.version).forEach { statement ->
-                    runCatching { db.execSQL(statement) }
+        try {
+            // Read the version after obtaining the write lock. Concurrent first
+            // openers must not both attempt an ALTER based on a stale version.
+            db.transaction {
+                check(db.version <= CyaDatabaseContract.SCHEMA_VERSION) {
+                    "This database requires a newer version of Cya!"
                 }
+                if (db.version == 0) {
+                    CyaDatabaseContract.CREATE_STATEMENTS.forEach(db::execSQL)
+                } else if (db.version < CyaDatabaseContract.SCHEMA_VERSION) {
+                    CyaDatabaseContract.upgradeStatements(db.version).forEach(db::execSQL)
+                }
+                if (db.version < CyaDatabaseContract.SCHEMA_VERSION) {
+                    for ((table, columns) in CyaDatabaseContract.MEMORY_COLUMNS) {
+                        db.rawQuery("SELECT $columns FROM $table LIMIT 0", emptyArray()).use { }
+                    }
+                }
+                // DDL and version commit together. Never swallow migration errors.
                 db.version = CyaDatabaseContract.SCHEMA_VERSION
             }
+        } catch (error: Throwable) {
+            db.close()
+            throw error
         }
         return db
     }

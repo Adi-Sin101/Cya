@@ -21,7 +21,10 @@ abstract final class RoutePaths {
   static const String lockSettings = '/lock-settings';
 
   static const String home = '/home';
+  static const String memories = '/memories';
+  static const String localModel = '/local-model';
   static const String promises = '/promises';
+  static const String rhythm = '/rhythm';
   static const String garden = '/garden';
   static const String profile = '/profile';
 

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:cya/data/db/cya_database.dart';
 import 'package:cya/domain/enums/intention_event_type.dart';
 import 'package:cya/domain/enums/intention_status.dart';
@@ -15,7 +17,7 @@ import 'package:sqlite3/sqlite3.dart';
 /// **Keep this DDL in step with `CyaDatabaseContract.CREATE_STATEMENTS`.** Note what is *absent*:
 /// no FTS5 table and no triggers. Android's system SQLite has no fts5 module (verified on API 34),
 /// so the search index is Dart-owned and reconciled on open (ADR-005).
-const List<String> _nativeCreateStatements = <String>[
+const List<String> nativeV2CreateStatements = <String>[
   '''
 CREATE TABLE IF NOT EXISTS "intentions" (
   "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
@@ -100,10 +102,13 @@ void main() {
 
   setUp(() {
     native = sqlite3.openInMemory();
-    for (final statement in _nativeCreateStatements) {
+    for (final statement in nativeV2CreateStatements) {
       native.execute(statement);
     }
-    native.execute('PRAGMA user_version = 2');
+    for (final statement in nativeMemoryStatements()) {
+      native.execute(statement);
+    }
+    native.execute('PRAGMA user_version = ${nativeSchemaVersion()}');
   });
 
   tearDown(() => native.close());
@@ -178,7 +183,7 @@ void main() {
   test('the native path never needs the fts5 module', () {
     // The DDL the Kotlin writer runs must be executable by a SQLite build
     // without fts5 — which is what Android ships.
-    for (final statement in _nativeCreateStatements) {
+    for (final statement in nativeV2CreateStatements) {
       expect(statement.toLowerCase(), isNot(contains('fts')));
     }
   });
@@ -188,7 +193,7 @@ void main() {
     // missing and user_version still says 1.
     final legacy = sqlite3.openInMemory();
     addTearDown(legacy.close);
-    for (final statement in _nativeCreateStatements) {
+    for (final statement in nativeV2CreateStatements) {
       // The same DDL minus the v2 column, line by line — no escaping games.
       legacy.execute(
         statement
@@ -255,3 +260,29 @@ void main() {
     ]);
   });
 }
+
+/// Read actual Kotlin DDL so changing the native schema cannot leave a copied
+/// fixture green. This block contains only triple-quoted CREATE statements.
+List<String> nativeMemoryStatements() {
+  final source = File(
+    'android/app/src/main/kotlin/dev/cya/app/capture/CyaDatabaseContract.kt',
+  ).readAsStringSync();
+  final block = source
+      .split('val MEMORY_STATEMENTS:')
+      .last
+      .split('val CREATE_STATEMENTS:')
+      .first;
+  return RegExp(
+    '"""([\\s\\S]*?)"""',
+  ).allMatches(block).map((m) => m.group(1)!.trim()).toList();
+}
+
+int nativeSchemaVersion() => int.parse(
+  RegExp(r'SCHEMA_VERSION = (\d+)')
+      .firstMatch(
+        File(
+          'android/app/src/main/kotlin/dev/cya/app/capture/CyaDatabaseContract.kt',
+        ).readAsStringSync(),
+      )!
+      .group(1)!,
+);
