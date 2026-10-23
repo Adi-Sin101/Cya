@@ -95,8 +95,12 @@ class PromiseTile extends StatelessWidget {
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: <Widget>[
-                        ReminderChip(display: reminder),
-                        const SizedBox(width: AppSpacing.sm),
+                        // A kept promise has no pending reminder urgency. Keep
+                        // its original date in storage so reopening restores it.
+                        if (!done) ...<Widget>[
+                          ReminderChip(display: reminder),
+                          const SizedBox(width: AppSpacing.sm),
+                        ],
                         if (category != null) ...<Widget>[
                           Icon(
                             categoryIcon(category),

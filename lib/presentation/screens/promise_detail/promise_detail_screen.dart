@@ -135,21 +135,23 @@ class _PromiseBody extends ConsumerWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.lg),
-        Row(
-          children: <Widget>[
-            ReminderChip(display: reminder),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Text(
-                reminder.kind == ReminderKind.none
-                    ? 'No reminder set'
-                    : reminder.timeLabel,
-                style: theme.textTheme.bodyMedium,
+        if (!promise.isResolved) ...<Widget>[
+          const SizedBox(height: AppSpacing.lg),
+          Row(
+            children: <Widget>[
+              ReminderChip(display: reminder),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Text(
+                  reminder.kind == ReminderKind.none
+                      ? 'No reminder set'
+                      : reminder.timeLabel,
+                  style: theme.textTheme.bodyMedium,
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
         const SizedBox(height: AppSpacing.xl),
 
         // Actions come before the supporting detail: this screen is opened to
