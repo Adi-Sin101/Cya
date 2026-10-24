@@ -1253,3 +1253,52 @@ module/session/lesson/test logs; navigation checklist; implementation status.
   commits, author/committer Adi-Sin101, no coauthor. No APKs, model binaries,
   exports, credentials or personal-phone data in Git. Verify ordinary push and
   remote SHA before reporting completion to the creator.
+
+## 2026-10-24 - Iteration23: onboarding animation overlap
+
+- Creator reported overlapping onboarding animation elements and authorized fix,
+  commit and push. Plan: iteration-23-onboarding-animation-layout.md; Master
+  sections8.3/8.4/9.1 and Appendix B. No product-contract conflict or migration.
+- Reproduced share-sheet paint below the illustrated phone and saved-badge paint
+  above it. Existing no-overflow/layout-only checks passed, so the new regression
+  measures transformed visible paint bounds after ancestor clipping/opacity.
+  All four size/motion tests failed before the fix. A second red run exposed
+  repeated title/action content in the rear notification card.
+- Fixed ShareGestureDemo with a rounded clipping boundary and inset saved badge.
+  NotificationPreview now uses a plain rear silhouette and an unrotated foreground
+  card with reserved bottom space. Existing scaffold, scrolling, permission order,
+  navigation and accessible illustration descriptions preserved.
+- New tests use bundled Plus Jakarta Sans/icons:48 page configurations covering
+  Welcome/Share/Notifications,360x800/320x640, light/dark,1.0/1.35 text and normal/
+  reduced motion; six animation times each, plus action scroll reachability.
+  Targeted16/16 passed9s; full296/296 passed55s; analyzer0 in51.7s.
+- Inspected before/after host renders, including compact enlarged dark/reduced
+  mode. Selected synthetic images are tracked in docs/qa/evidence/onboarding;
+  links in the iteration23 plan. These are real-font Flutter host renders, not
+  fresh physical-device or emulator screenshots. Prior emulator acceptance
+  limitations remain; no new device installation is claimed.
+- App files: share_gesture_demo.dart and notification_preview.dart only; regression
+  onboarding_layout_test.dart; plan, selected evidence, Master living log and this
+  log. No native/data/schema/dependency/permission change. No temporary debug logs.
+- Lesson: transformed paint can overlap neighboring content without any layout
+  exception. Sample the moving illustration's paint boundary, not only its static
+  layout rectangle. A decorative rear surface must not expose duplicated actions.
+- Git identity verified as Adi-Sin101 (author/committer), no coauthor. Release build
+  and delivery verification follow before reporting success.
+
+Iteration23 release verification: normal lib/main.dart build4017 passed172.7s,
+ARM64 version6017 and x64 version8017, minSDK24/targetSDK36. Process-local Gradle
+heap2GB/one worker; no project-tooling changes. ARM64 manifest has no INTERNET or
+ACCESS_NETWORK_STATE; existing permissions retained. No device installation run.
+
+- ARM64 APK52459937 bytes, SHA256
+  `bf6fd5ae24fa825c399455a4e047cc0cf769afb955e86e2ee54a43fd3b018053`.
+- X64 APK58894967 bytes, SHA256
+  `3cadf19cf614721ed3f72f3961691a0c2f2385362fa00f92e41861df3c204056`.
+
+Commands: `flutter --no-version-check analyze --no-pub`;
+`flutter --no-version-check test --no-pub --concurrency=2`;
+`flutter --no-version-check build apk --release --no-pub --split-per-abi
+--target-platform android-arm64,android-x64 --build-number 4017 -t lib/main.dart`.
+No app source edits after final checks. Git delivery is verified against remote
+HEAD before reporting success; APKs and raw render caches are excluded from Git.

@@ -25,18 +25,23 @@ class NotificationPreview extends StatelessWidget {
       child: Stack(
         alignment: Alignment.topCenter,
         children: <Widget>[
-          // The one behind, implying the group rather than drawing all of it.
-          Padding(
-            padding: const EdgeInsets.only(top: 26),
-            child: FractionallySizedBox(
-              widthFactor: 0.88,
-              child: Opacity(
-                opacity: 0.45,
-                child: IgnorePointer(child: _Card(dimmed: true)),
+          // A silhouette suggests the notification group without a second
+          // title/action row bleeding out behind the foreground notification.
+          Positioned.fill(
+            top: 16,
+            left: 12,
+            right: 12,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: context.cyaColors.surface2,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
               ),
             ),
           ),
-          Transform.rotate(angle: -0.018, child: _Card(dimmed: false)),
+          const Padding(padding: EdgeInsets.only(bottom: 16), child: _Card()),
         ],
       ),
     );
@@ -44,9 +49,7 @@ class NotificationPreview extends StatelessWidget {
 }
 
 class _Card extends StatelessWidget {
-  const _Card({required this.dimmed});
-
-  final bool dimmed;
+  const _Card();
 
   @override
   Widget build(BuildContext context) {
@@ -59,7 +62,7 @@ class _Card extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: dimmed ? null : cyaShadow(context, elevation: 1.6),
+        boxShadow: cyaShadow(context, elevation: 1.6),
         border: Border.all(color: colors.outlineVariant),
       ),
       child: Column(
@@ -75,7 +78,11 @@ class _Card extends StatelessWidget {
                   color: colors.primary,
                   borderRadius: BorderRadius.circular(5),
                 ),
-                child: const Icon(Icons.eco_rounded, size: 12, color: Colors.white),
+                child: const Icon(
+                  Icons.eco_rounded,
+                  size: 12,
+                  color: Colors.white,
+                ),
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(

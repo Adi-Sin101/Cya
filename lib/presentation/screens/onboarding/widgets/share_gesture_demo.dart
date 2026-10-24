@@ -101,87 +101,91 @@ class _DemoFrame extends StatelessWidget {
     final sheetOut = _phase(progress, 0.86, 1.0, curve: Curves.easeInCubic);
     final sheet = sheetIn * (1 - sheetOut);
 
-    return Stack(
-      clipBehavior: Clip.none,
-      children: <Widget>[
-        // --- the borrowed phone: another app, mid-conversation ---
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: colors.surface,
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
-              border: Border.all(color: colors.outlineVariant),
-              boxShadow: cyaShadow(context, elevation: 1.6),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xxl),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  _MockChatHeader(),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.md),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          const _MockBubble(width: 0.52, mine: true),
-                          const SizedBox(height: AppSpacing.sm),
-                          const _MockBubble(width: 0.4, mine: false),
-                          const SizedBox(height: AppSpacing.sm),
-                          // The message the demo is about, highlighted as the
-                          // thing being shared.
-                          _SharedBubble(emphasis: 1 - sheetOut),
-                        ],
+    // The sheet travels below the phone when hidden. Keep that off-screen
+    // content inside the illustration instead of painting over the page copy.
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.xxl),
+      child: Stack(
+        children: <Widget>[
+          // --- the borrowed phone: another app, mid-conversation ---
+          Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                border: Border.all(color: colors.outlineVariant),
+                boxShadow: cyaShadow(context, elevation: 1.6),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xxl),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    _MockChatHeader(),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(AppSpacing.md),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            const _MockBubble(width: 0.52, mine: true),
+                            const SizedBox(height: AppSpacing.sm),
+                            const _MockBubble(width: 0.4, mine: false),
+                            const SizedBox(height: AppSpacing.sm),
+                            // The message the demo is about, highlighted as the
+                            // thing being shared.
+                            _SharedBubble(emphasis: 1 - sheetOut),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-        // --- dim behind the sheet, so the sheet reads as a system surface ---
-        Positioned.fill(
-          child: IgnorePointer(
-            child: Opacity(
-              opacity: sheet * 0.28,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black,
-                  borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  ],
                 ),
               ),
             ),
           ),
-        ),
 
-        // --- the share sheet, rising ---
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: FractionalTranslation(
-            translation: Offset(0, 1 - sheet),
-            child: _ShareSheet(tap: tap),
-          ),
-        ),
-
-        // --- "Saved · 0.1s", the promise the copy makes, kept on screen ---
-        Positioned(
-          top: -14,
-          right: -6,
-          child: Opacity(
-            opacity: saved * (1 - sheetOut),
-            child: Transform.scale(
-              scale: 0.86 + 0.14 * saved,
-              child: _SavedToast(),
+          // --- dim behind the sheet, so the sheet reads as a system surface ---
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: sheet * 0.28,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(AppRadius.xxl),
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ],
+
+          // --- the share sheet, rising ---
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: FractionalTranslation(
+              translation: Offset(0, 1 - sheet),
+              child: _ShareSheet(tap: tap),
+            ),
+          ),
+
+          // --- "Saved · 0.1s", the promise the copy makes, kept on screen ---
+          Positioned(
+            top: AppSpacing.sm,
+            right: AppSpacing.sm,
+            child: Opacity(
+              opacity: saved * (1 - sheetOut),
+              child: Transform.scale(
+                scale: 0.86 + 0.14 * saved,
+                child: _SavedToast(),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -198,7 +202,10 @@ class _MockChatHeader extends StatelessWidget {
       color: cya.surface2,
       child: Row(
         children: <Widget>[
-          CircleAvatar(radius: 11, backgroundColor: cya.textSecondary.withValues(alpha: 0.28)),
+          CircleAvatar(
+            radius: 11,
+            backgroundColor: cya.textSecondary.withValues(alpha: 0.28),
+          ),
           const SizedBox(width: AppSpacing.sm),
           Container(
             width: 62,
@@ -417,7 +424,9 @@ class _CyaTarget extends StatelessWidget {
                     ),
                     boxShadow: <BoxShadow>[
                       BoxShadow(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.35),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.35,
+                        ),
                         blurRadius: 14,
                         spreadRadius: -2,
                         offset: const Offset(0, 4),

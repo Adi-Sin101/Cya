@@ -421,13 +421,14 @@ All derived from the event log (7.1).
 ### 13.1 Module / feature status
 Iteration22 (2026-10-23): comprehensive synthetic emulator QA and two regression
 fixes are recorded in `docs/qa/Emulator_QA_2026-10-23.md`. That dated report is
-the current verification boundary; historical rows below retain their original
+the broader functional verification boundary; historical rows below retain their original
 dates and must not be interpreted as fresh certification of every revamp phase.
 
 Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-known-issues · 🟥 blocked
 
 | Module | Status | Last updated | Working? | Notes / known issues |
 |---|---|---|---|---|
+| Onboarding animation containment | Fixed with regression coverage | 2026-10-24 | Full296; analyzer0; rendered frames inspected | Share sheet and saved badge stay inside the illustrated phone; notification rear card no longer repeats text/actions. Real-font light/dark, narrow/short, enlarged text and reduced motion matrix. Plan iteration23; no fresh device verification claimed. |
 | Revamp memories / required semantics | Integrated; broader release acceptance open | 2026-10-16 | Host, emulator, A52 app and real speech probe | Schema8 original text/audio/history, async required real-model index/retrieval/reviewed links, portable restore, focus and explicit branches/organization. Actual airplane app retrieval and20 public speech sources/60 positive queries pass on A52. Seed Banglish6/10 and larger held-out/spontaneous speech, relatedness and sustained-resource gates remain open. |
 | Garden Home/Profile doorway and Profile visualization | Implemented,6015 installed | 2026-10-17 | Full289; analyzer0; synthetic previews2/2 | Illustrated event-backed Garden entries and back navigation; XP/avatar ring, badge milestones, settings retained. No schema/model/native change; final physical GUI awaits normal app unlock. |
 | Memory / voice navigation and visuals | Implemented; release validation | 2026-10-16 | Full285; workflow14; analyzer0; native8 | Main Memories tab, visible Record voice/Write a thought, global capture chooser, original audio cards, full-screen editor, accepted-link map/list, model/data tools. Home/Focus wake index after commit. Schema8/format8 unchanged; 6014 installed on A52; final UI smoke pending existing app unlock. |
@@ -465,6 +466,13 @@ Legend: ⬜ not started · 🟨 in progress · ✅ done · ⚠️ done-with-know
 | Metrics instrumentation | 🟨 | 2026-08-31 | Partly | `capture_ms` in every `captured` event; every fire writes `resurfaced` with its tier, so reminder reliability is measurable. Missed-reminder detection ships; no in-app metrics screen yet. |
 
 ### 13.2 Current session log
+
+2026-10-24 / Iteration23: reproduced onboarding painted overlap despite ordinary
+layout tests passing. Confined the animated share sheet/badge to the rounded phone
+and replaced the rear notification's duplicated content with a silhouette. New
+real-font paint-bound regression failed before fixes; targeted16/16 (9s), full
+296/296 (55s), analyzer0 (51.7s). Visual evidence and exact release results in
+iteration23 plan/BUILD_LOG. Native capture, data contract and dependencies unchanged.
 
 2026-10-23 / Iteration22: isolated API34 production-UI QA records27 distinct
 passing cases, including original voice save/playback/recovery, multilingual
@@ -695,6 +703,11 @@ Session 2026-08-31 - Iteration 7 (home-screen widget: the last Phase 1 surface)
 ```
 
 ### 13.3 Decision log (ADR-lite)
+
+Iteration23 layout decision: decorative onboarding animations own their clipping
+boundary; translated content must not paint into instructional copy. Notification
+group depth uses a blank rear surface, not overlapping duplicate actions. Preserve
+the existing scaffold and permission sequence; no architectural ADR is needed.
 
 **ADR-030 (2026-10-17): Garden remains visually present outside tab navigation.**
 The creator approves retaining five main tabs but explicitly asks for an
@@ -1278,6 +1291,10 @@ Rule: an overflow that appears only under `flutter test` is a font-metrics artef
 
 ### 13.4 Mistakes & lessons learned
 
+Iteration23: a clean RenderFlex/layout test does not detect a translated child
+painting outside a Stack. Check visible paint bounds including transforms, clips
+and opacity at intermediate frames, with bundled fonts; inspect actual renders.
+
 Iteration22: resolved-state presentation must suppress pending urgency without
 discarding the stored reminder needed by reopening. Persisted focus IDs must
 rehydrate their exact occurrence/revision after navigation or process recovery.
@@ -1465,6 +1482,11 @@ Rule: for this app, "verified" means an emulator walk-through, not a green suite
 ```
 
 ### 13.5 Test & verification log
+
+Iteration23: four size/motion regressions cover48 real-font page configurations
+and six sampled animation times; all failed before containment/duplicate-card
+fixes and pass afterward. Targeted16/16 (9s), full296/296 (55s), analyzer0 (51.7s).
+Host renders inspected; exact release build and verification limits in BUILD_LOG.
 
 Iteration22: baseline289 Flutter tests; completed-status full291; focus recovery
 focused5; final full292/292 in11m03s, all passed. Final analyzer0 (321.2s on heavily loaded host); native
